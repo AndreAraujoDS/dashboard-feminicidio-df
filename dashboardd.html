@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Feminicídio no DF — Painel com Mapa</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -179,18 +178,21 @@ body{background:var(--paper);color:var(--ink);font-family:var(--ff-body);font-si
 .h3{background:rgba(185,28,28,.5);color:#5C0A0A}
 .h4{background:#B91C1C;color:#fff}
 
-/* MAP */
+/* MAP SVG */
 #map-container{border:1px solid var(--rule);border-radius:4px;overflow:hidden;}
-#df-map{height:520px;width:100%;background:#e8e0d4;}
+#df-map-svg-wrap{width:100%;background:#ddd6c8;position:relative;overflow:hidden;cursor:default;}
+#df-map-svg-wrap svg{width:100%;height:100%;display:block;}
+.ra-path{cursor:pointer;transition:filter .15s,opacity .15s;}
+.ra-path:hover{filter:brightness(0.82);opacity:1!important;}
+.ra-path.selected-ra{stroke:#1A1410!important;stroke-width:2.5!important;filter:brightness(0.75);}
 .map-legend{padding:12px 16px;background:var(--paper2);border-top:1px solid var(--rule);display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
 .legend-title{font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
 .legend-items{display:flex;gap:12px;flex-wrap:wrap;}
 .legend-item{display:flex;align-items:center;gap:5px;font-family:var(--ff-mono);font-size:9px;color:var(--muted);}
 .legend-swatch{width:14px;height:14px;border-radius:2px;border:1px solid rgba(0,0,0,.1);}
-
-/* MAP TOOLTIP */
-.leaflet-tooltip-custom{background:var(--ink);color:var(--paper);border:none;border-radius:4px;padding:8px 12px;font-family:var(--ff-mono);font-size:11px;box-shadow:0 4px 16px rgba(0,0,0,.3);}
-.leaflet-tooltip-custom strong{color:#F87171;display:block;font-size:13px;margin-bottom:2px;}
+/* SVG map tooltip */
+#svg-tooltip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);border-radius:4px;padding:8px 12px;font-family:var(--ff-mono);font-size:11px;box-shadow:0 4px 16px rgba(0,0,0,.35);display:none;z-index:10;max-width:220px;line-height:1.5;}
+#svg-tooltip strong{color:#F87171;display:block;font-size:12px;margin-bottom:2px;}
 
 /* BAIRROS PANEL */
 .bairros-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:4px;}
@@ -396,7 +398,10 @@ body{background:var(--paper);color:var(--ink);font-family:var(--ff-body);font-si
   </div>
   <div class="map-layout">
     <div id="map-container">
-      <div id="df-map"></div>
+      <div id="df-map-svg-wrap" style="height:520px;">
+        <svg id="df-map-svg" viewBox="0 0 800 620" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="svg-tooltip"></div>
+      </div>
       <div class="map-legend">
         <span class="legend-title">Casos totais (2015–2024)</span>
         <div class="legend-items">
@@ -976,58 +981,167 @@ document.getElementById('clear-ra').addEventListener('click',()=>{
 /* ─── RENDER ALL ─── */
 function render(){renderKPIs();renderChart();renderRanking();renderRates();renderHeat();updateSidebarTotals();}
 
-/* ─── MAP ─── */
-let dfMap=null;
-let mapLayers={};
-let mapInitialized=false;
+/* ─── MAP SVG NATIVO ─── */
+// Projeção: converte lat/lon para coordenadas SVG (viewBox 0 0 800 620)
+// Bounding box do DF: lat -16.10 a -15.52, lon -48.28 a -47.30
+const MAP_BOUNDS={latMin:-16.12,latMax:-15.48,lonMin:-48.32,lonMax:-47.28};
+const SVG_W=800,SVG_H=620;
+
+function project(lat,lon){
+  const x=(lon-MAP_BOUNDS.lonMin)/(MAP_BOUNDS.lonMax-MAP_BOUNDS.lonMin)*SVG_W;
+  const y=(1-(lat-MAP_BOUNDS.latMin)/(MAP_BOUNDS.latMax-MAP_BOUNDS.latMin))*SVG_H;
+  return[x,y];
+}
+
+function coordsToPath(coords){
+  return coords.map((c,i)=>{
+    const[x,y]=project(c[0],c[1]);
+    return(i===0?'M':'L')+x.toFixed(1)+' '+y.toFixed(1);
+  }).join(' ')+'Z';
+}
 
 function getMapColor(total){
-  if(!total||total===0) return '#e5e7eb';
+  if(!total||total===0) return '#e0d9cc';
   if(total<=5) return '#fde8e8';
   if(total<=10) return '#f9a8a8';
   if(total<=20) return '#ef4444';
   return '#b91c1c';
 }
 
+let mapInitialized=false;
+let selectedMapRA=null;
+
 function initMap(){
   if(mapInitialized) return;
   mapInitialized=true;
-  dfMap=L.map('df-map',{center:[-15.78,-47.93],zoom:10,zoomControl:true});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap contributors',
-    maxZoom:17
-  }).addTo(dfMap);
 
-  // Add RA polygons
+  const svg=document.getElementById('df-map-svg');
+  const wrap=document.getElementById('df-map-svg-wrap');
+  const tip=document.getElementById('svg-tooltip');
+
+  // Fundo do DF (retângulo de base)
+  const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
+  bg.setAttribute('width',SVG_W);bg.setAttribute('height',SVG_H);
+  bg.setAttribute('fill','#cfc8ba');
+  svg.appendChild(bg);
+
+  // Título do mapa
+  const title=document.createElementNS('http://www.w3.org/2000/svg','text');
+  title.setAttribute('x',12);title.setAttribute('y',20);
+  title.setAttribute('font-family','IBM Plex Mono,monospace');title.setAttribute('font-size',9);
+  title.setAttribute('fill','rgba(26,20,16,0.45)');title.setAttribute('letter-spacing','1.5');
+  title.textContent='DISTRITO FEDERAL — REGIÕES ADMINISTRATIVAS';
+  svg.appendChild(title);
+
+  // Renderizar polígonos
   Object.keys(RA_POLYGONS).forEach(ra=>{
     const coords=RA_POLYGONS[ra];
     const total=YEARS.reduce((s,y)=>s+(CASES[ra]?CASES[ra][y]||0:0),0);
     const rate=POP[ra]?+((total/(POP[ra]*.5))*100000).toFixed(1):0;
-    const poly=L.polygon(coords,{
-      color:'rgba(26,20,16,0.4)',
-      weight:1.5,
-      fillColor:getMapColor(total),
-      fillOpacity:0.6,
-    }).addTo(dfMap);
-    poly.bindTooltip(`<strong>${ra}</strong>${total} casos · Taxa: ${rate}/100k mulheres`,{className:'leaflet-tooltip-custom',direction:'top'});
-    poly.on('click',()=>showMapDetail(ra,total,rate));
-    mapLayers[ra]=poly;
+
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',coordsToPath(coords));
+    path.setAttribute('fill',getMapColor(total));
+    path.setAttribute('fill-opacity','0.82');
+    path.setAttribute('stroke','rgba(26,20,16,0.35)');
+    path.setAttribute('stroke-width','1');
+    path.setAttribute('stroke-linejoin','round');
+    path.classList.add('ra-path');
+    path.dataset.ra=ra;
+
+    // Label centroide
+    if(RA_COORDS[ra]){
+      const[cx,cy]=project(RA_COORDS[ra][0],RA_COORDS[ra][1]);
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x',cx);lbl.setAttribute('y',cy);
+      lbl.setAttribute('text-anchor','middle');lbl.setAttribute('dominant-baseline','middle');
+      lbl.setAttribute('font-family','IBM Plex Mono,monospace');
+      lbl.setAttribute('font-size','7.5');lbl.setAttribute('font-weight','600');
+      lbl.setAttribute('fill','rgba(26,20,16,0.7)');
+      lbl.setAttribute('pointer-events','none');
+      // nome curto
+      const shortName=ra.replace('Brasília (Plano Piloto)','Pl. Piloto')
+        .replace('Sol Nascente/Pôr do Sol','Sol Nasc.')
+        .replace('Recanto das Emas','Recanto').replace('SCIA/Estrutural','Estrutural')
+        .replace('Sobradinho II','Sobrad. II').replace('Riacho Fundo II','R.Fundo II')
+        .replace('Vicente Pires','V.Pires').replace('Águas Claras','Á.Claras')
+        .replace('São Sebastião','S.Sebastião').replace('Santa Maria','S.Maria');
+      lbl.textContent=shortName;
+      svg.appendChild(lbl);
+
+      // badge com total se >0
+      if(total>0){
+        const badge=document.createElementNS('http://www.w3.org/2000/svg','text');
+        badge.setAttribute('x',cx);badge.setAttribute('y',cy+10);
+        badge.setAttribute('text-anchor','middle');badge.setAttribute('dominant-baseline','middle');
+        badge.setAttribute('font-family','IBM Plex Mono,monospace');
+        badge.setAttribute('font-size','9');badge.setAttribute('font-weight','700');
+        badge.setAttribute('fill',total>20?'#fff':'#7f1010');
+        badge.setAttribute('pointer-events','none');
+        badge.textContent=total;
+        svg.appendChild(badge);
+      }
+    }
+
+    // Hover tooltip
+    path.addEventListener('mousemove',(e)=>{
+      const rect=wrap.getBoundingClientRect();
+      tip.innerHTML=`<strong>${ra}</strong>${total} casos (2015–2024)<br>Taxa: ${rate} por 100k mulheres`;
+      tip.style.display='block';
+      const tx=e.clientX-rect.left+12;
+      const ty=e.clientY-rect.top-8;
+      tip.style.left=(tx+180>rect.width?tx-200:tx)+'px';
+      tip.style.top=(ty<0?8:ty)+'px';
+    });
+    path.addEventListener('mouseleave',()=>{tip.style.display='none';});
+    path.addEventListener('click',()=>{
+      document.querySelectorAll('.ra-path').forEach(p=>p.classList.remove('selected-ra'));
+      path.classList.add('selected-ra');
+      selectedMapRA=ra;
+      showMapDetail(ra,total,rate);
+    });
+
+    svg.appendChild(path);
   });
 
-  // Add markers for RAs without polygons
+  // Marcadores circulares para RAs sem polígono mas com casos
   Object.keys(RA_COORDS).forEach(ra=>{
-    if(RA_POLYGONS[ra]) return; // skip if polygon exists
+    if(RA_POLYGONS[ra]) return;
     const total=YEARS.reduce((s,y)=>s+(CASES[ra]?CASES[ra][y]||0:0),0);
     const rate=POP[ra]?+((total/(POP[ra]*.5))*100000).toFixed(1):0;
     if(total===0) return;
-    const coords=RA_COORDS[ra];
-    const circle=L.circleMarker(coords,{
-      radius:Math.max(6,Math.sqrt(total)*4),
-      color:'#B91C1C',weight:2,fillColor:getMapColor(total),fillOpacity:0.7
-    }).addTo(dfMap);
-    circle.bindTooltip(`<strong>${ra}</strong>${total} casos · Taxa: ${rate}/100k`,{className:'leaflet-tooltip-custom',direction:'top'});
-    circle.on('click',()=>showMapDetail(ra,total,rate));
-    mapLayers[ra]=circle;
+    const[cx,cy]=project(RA_COORDS[ra][0],RA_COORDS[ra][1]);
+    const r=Math.max(8,Math.sqrt(total)*5);
+
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',cx);circle.setAttribute('cy',cy);circle.setAttribute('r',r);
+    circle.setAttribute('fill',getMapColor(total));circle.setAttribute('fill-opacity','0.85');
+    circle.setAttribute('stroke','#7f1010');circle.setAttribute('stroke-width','1.5');
+    circle.classList.add('ra-path');circle.dataset.ra=ra;
+
+    circle.addEventListener('mousemove',(e)=>{
+      const rect=wrap.getBoundingClientRect();
+      tip.innerHTML=`<strong>${ra}</strong>${total} casos (2015–2024)<br>Taxa: ${rate} por 100k mulheres`;
+      tip.style.display='block';
+      tip.style.left=(e.clientX-rect.left+12)+'px';
+      tip.style.top=(e.clientY-rect.top-8)+'px';
+    });
+    circle.addEventListener('mouseleave',()=>{tip.style.display='none';});
+    circle.addEventListener('click',()=>{
+      document.querySelectorAll('.ra-path').forEach(p=>p.classList.remove('selected-ra'));
+      circle.classList.add('selected-ra');
+      showMapDetail(ra,total,rate);
+    });
+    svg.appendChild(circle);
+
+    const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',cx);lbl.setAttribute('y',cy+1);
+    lbl.setAttribute('text-anchor','middle');lbl.setAttribute('dominant-baseline','middle');
+    lbl.setAttribute('font-family','IBM Plex Mono,monospace');lbl.setAttribute('font-size','7');
+    lbl.setAttribute('font-weight','700');lbl.setAttribute('fill','#fff');
+    lbl.setAttribute('pointer-events','none');
+    lbl.textContent=total;
+    svg.appendChild(lbl);
   });
 
   renderMapTop5();
@@ -1177,7 +1291,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('on'));
     btn.classList.add('on');
     document.getElementById('tab-'+tab).classList.add('on');
-    if(tab==='mapa'){setTimeout(()=>{initMap();if(dfMap)dfMap.invalidateSize();},100);}
+    if(tab==='mapa') initMap();
     if(tab==='bairros') renderBairros();
     if(tab==='previsao') renderPrevisao();
   });
