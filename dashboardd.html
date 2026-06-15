@@ -3,12 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Feminicídio no DF — Painel de Dados</title>
+<title>Feminicídio no DF — Painel com Mapa</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-/* ═══════════════════════════════════════════════════════════
-   RESET & BASE
-═══════════════════════════════════════════════════════════ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --ink:#1A1410;
@@ -30,396 +29,139 @@
   --ff-body:'Instrument Sans',sans-serif;
 }
 html{scroll-behavior:smooth}
-body{
-  background:var(--paper);
-  color:var(--ink);
-  font-family:var(--ff-body);
-  font-size:14px;
-  line-height:1.5;
-  min-height:100vh;
-}
+body{background:var(--paper);color:var(--ink);font-family:var(--ff-body);font-size:14px;line-height:1.5;min-height:100vh;}
 
-/* ═══════════════════════════════════════════════════════════
-   MASTHEAD
-═══════════════════════════════════════════════════════════ */
-.masthead{
-  background:var(--ink);
-  color:var(--paper);
-  padding:0 32px;
-}
-.masthead-inner{
-  max-width:1280px;margin:0 auto;
-  display:flex;align-items:stretch;justify-content:space-between;
-  border-bottom:1px solid rgba(245,240,232,0.12);
-}
-.masthead-brand{
-  padding:20px 0;
-  border-right:1px solid rgba(245,240,232,0.12);
-  padding-right:28px;
-  margin-right:28px;
-}
-.masthead-brand .eyebrow{
-  font-family:var(--ff-mono);
-  font-size:9px;letter-spacing:.18em;
-  text-transform:uppercase;
-  color:rgba(245,240,232,0.45);
-  margin-bottom:6px;
-}
-.masthead-brand h1{
-  font-family:var(--ff-head);
-  font-size:22px;font-weight:900;
-  line-height:1.15;
-  color:var(--paper);
-}
-.masthead-brand h1 em{
-  font-style:normal;
-  color:#F87171;
-}
-.masthead-meta{
-  display:flex;align-items:center;gap:28px;
-}
+/* MASTHEAD */
+.masthead{background:var(--ink);color:var(--paper);padding:0 32px;}
+.masthead-inner{max-width:1320px;margin:0 auto;display:flex;align-items:stretch;justify-content:space-between;border-bottom:1px solid rgba(245,240,232,0.12);}
+.masthead-brand{padding:20px 0;border-right:1px solid rgba(245,240,232,0.12);padding-right:28px;margin-right:28px;}
+.masthead-brand .eyebrow{font-family:var(--ff-mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(245,240,232,0.45);margin-bottom:6px;}
+.masthead-brand h1{font-family:var(--ff-head);font-size:22px;font-weight:900;line-height:1.15;color:var(--paper);}
+.masthead-brand h1 em{font-style:normal;color:#F87171;}
+.masthead-meta{display:flex;align-items:center;gap:28px;}
 .meta-stat{padding:20px 0;border-right:1px solid rgba(245,240,232,0.1);padding-right:28px}
 .meta-stat:last-child{border-right:none;padding-right:0}
-.meta-stat .num{
-  font-family:var(--ff-mono);
-  font-size:26px;font-weight:600;
-  color:var(--paper);line-height:1;
-}
+.meta-stat .num{font-family:var(--ff-mono);font-size:26px;font-weight:600;color:var(--paper);line-height:1;}
 .meta-stat .num.r{color:#F87171}
-.meta-stat .lbl{
-  font-size:9px;letter-spacing:.1em;text-transform:uppercase;
-  color:rgba(245,240,232,0.4);margin-top:3px;
-}
-.tag-row{
-  display:flex;align-items:center;gap:8px;
-  padding:10px 32px;
-  background:rgba(245,240,232,0.06);
-  border-top:1px solid rgba(245,240,232,0.08);
-}
-.tag{
-  font-family:var(--ff-mono);
-  font-size:9px;letter-spacing:.12em;text-transform:uppercase;
-  padding:3px 8px;border-radius:2px;
-  border:1px solid rgba(245,240,232,0.2);
-  color:rgba(245,240,232,0.5);
-}
+.meta-stat .lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,240,232,0.4);margin-top:3px;}
+.tag-row{display:flex;align-items:center;gap:8px;padding:10px 32px;background:rgba(245,240,232,0.06);border-top:1px solid rgba(245,240,232,0.08);}
+.tag{font-family:var(--ff-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:3px 8px;border-radius:2px;border:1px solid rgba(245,240,232,0.2);color:rgba(245,240,232,0.5);}
 .tag.active{background:#B91C1C;border-color:#B91C1C;color:#fff}
 
-/* ═══════════════════════════════════════════════════════════
-   LAYOUT
-═══════════════════════════════════════════════════════════ */
-.layout{
-  max-width:1280px;margin:0 auto;
-  display:grid;
-  grid-template-columns:240px 1fr;
-  gap:0;
-  padding:0 32px;
-  min-height:calc(100vh - 120px);
-}
-.sidebar{
-  border-right:1px solid var(--rule);
-  padding:28px 24px 28px 0;
-}
-.main{
-  padding:28px 0 28px 32px;
-  display:flex;flex-direction:column;gap:28px;
-}
+/* TABS */
+.tabs-bar{max-width:1320px;margin:0 auto;padding:0 32px;display:flex;gap:0;border-bottom:2px solid var(--rule);background:var(--paper);}
+.tab-btn{font-family:var(--ff-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:12px 20px;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
+.tab-btn:hover{color:var(--ink)}
+.tab-btn.on{color:var(--crimson);border-bottom-color:var(--crimson);font-weight:600;}
 
-/* ═══════════════════════════════════════════════════════════
-   SIDEBAR
-═══════════════════════════════════════════════════════════ */
+/* TAB PANELS */
+.tab-panel{display:none}
+.tab-panel.on{display:block}
+
+/* LAYOUT */
+.layout{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:240px 1fr;gap:0;padding:0 32px;min-height:calc(100vh - 160px);}
+.sidebar{border-right:1px solid var(--rule);padding:28px 24px 28px 0;}
+.main{padding:28px 0 28px 32px;display:flex;flex-direction:column;gap:28px;}
+
+/* SIDEBAR */
 .sidebar-section{margin-bottom:28px}
-.sidebar-section:last-child{margin-bottom:0}
-.sidebar-title{
-  font-family:var(--ff-mono);
-  font-size:9px;font-weight:600;
-  letter-spacing:.2em;text-transform:uppercase;
-  color:var(--muted);
-  padding-bottom:10px;
-  border-bottom:1px solid var(--rule);
-  margin-bottom:12px;
-}
-
-/* Region groups */
+.sidebar-title{font-family:var(--ff-mono);font-size:9px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);padding-bottom:10px;border-bottom:1px solid var(--rule);margin-bottom:12px;}
 .region-group{margin-bottom:10px}
-.region-group-label{
-  font-family:var(--ff-mono);
-  font-size:9px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:5px;
-  display:flex;align-items:center;gap:6px;
-}
-.region-group-label .gcount{
-  background:var(--paper3);
-  border-radius:2px;padding:0 4px;
-  color:var(--ink);font-size:8px;
-}
-.ra-btn{
-  display:flex;align-items:center;justify-content:space-between;
-  width:100%;padding:5px 8px;
-  border-radius:3px;border:none;
-  background:transparent;
-  cursor:pointer;
-  font-family:var(--ff-body);font-size:11.5px;
-  color:var(--muted);
-  text-align:left;
-  transition:all .15s;
-  margin-bottom:1px;
-}
+.region-group-label{font-family:var(--ff-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:6px;}
+.region-group-label .gcount{background:var(--paper3);border-radius:2px;padding:0 4px;color:var(--ink);font-size:8px;}
+.ra-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:5px 8px;border-radius:3px;border:none;background:transparent;cursor:pointer;font-family:var(--ff-body);font-size:11.5px;color:var(--muted);text-align:left;transition:all .15s;margin-bottom:1px;}
 .ra-btn:hover{background:var(--paper2);color:var(--ink)}
 .ra-btn.on{background:var(--crimson-dim);color:var(--crimson);font-weight:500}
-.ra-btn .ra-tot{
-  font-family:var(--ff-mono);
-  font-size:10px;font-weight:500;
-  opacity:.6;
-}
+.ra-btn .ra-tot{font-family:var(--ff-mono);font-size:10px;font-weight:500;opacity:.6;}
 .ra-btn.on .ra-tot{opacity:1;color:var(--crimson)}
-
-/* Year filter */
 .yr-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
-.yr-btn{
-  padding:6px 4px;border:1px solid var(--rule);
-  background:transparent;border-radius:3px;
-  cursor:pointer;font-family:var(--ff-mono);font-size:11px;
-  color:var(--muted);transition:all .15s;text-align:center;
-}
+.yr-btn{padding:6px 4px;border:1px solid var(--rule);background:transparent;border-radius:3px;cursor:pointer;font-family:var(--ff-mono);font-size:11px;color:var(--muted);transition:all .15s;text-align:center;}
 .yr-btn:hover{border-color:var(--crimson);color:var(--ink)}
 .yr-btn.on{background:var(--ink);border-color:var(--ink);color:var(--paper);font-weight:500}
-
-/* Policy pills */
-.policy-item{
-  padding:8px 10px;border-left:2px solid var(--rule);
-  margin-bottom:8px;cursor:pointer;
-  transition:border-color .15s,background .15s;
-  border-radius:0 3px 3px 0;
-}
+.policy-item{padding:8px 10px;border-left:2px solid var(--rule);margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s;border-radius:0 3px 3px 0;}
 .policy-item:hover{border-color:var(--crimson);background:var(--crimson-dim)}
 .policy-item.on{border-color:var(--crimson);background:var(--crimson-dim)}
-.policy-item .p-yr{
-  font-family:var(--ff-mono);font-size:9px;font-weight:600;
-  color:var(--crimson);margin-bottom:2px;letter-spacing:.05em;
-}
+.policy-item .p-yr{font-family:var(--ff-mono);font-size:9px;font-weight:600;color:var(--crimson);margin-bottom:2px;letter-spacing:.05em;}
 .policy-item .p-name{font-size:10.5px;font-weight:500;color:var(--ink);line-height:1.3}
 .policy-item .p-desc{font-size:9.5px;color:var(--muted);margin-top:2px;line-height:1.4}
-
-.clear-btn{
-  width:100%;padding:7px;
-  border:1px solid var(--rule);background:transparent;
-  border-radius:3px;cursor:pointer;
-  font-family:var(--ff-mono);font-size:9px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--muted);
-  transition:all .15s;margin-top:8px;
-}
+.clear-btn{width:100%;padding:7px;border:1px solid var(--rule);background:transparent;border-radius:3px;cursor:pointer;font-family:var(--ff-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:all .15s;margin-top:8px;}
 .clear-btn:hover{background:var(--paper2);color:var(--ink)}
 
-/* ═══════════════════════════════════════════════════════════
-   MAIN CONTENT — SECTION LABELS
-═══════════════════════════════════════════════════════════ */
-.section-head{
-  display:flex;align-items:baseline;gap:12px;
-  margin-bottom:14px;
-  padding-bottom:10px;
-  border-bottom:1px solid var(--rule);
-}
-.section-head h2{
-  font-family:var(--ff-head);
-  font-size:18px;font-weight:700;
-  color:var(--ink);
-}
-.section-head .hint{
-  font-family:var(--ff-mono);
-  font-size:9px;letter-spacing:.08em;
-  color:var(--muted);
-}
+/* SECTION HEADS */
+.section-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--rule);}
+.section-head h2{font-family:var(--ff-head);font-size:18px;font-weight:700;color:var(--ink);}
+.section-head .hint{font-family:var(--ff-mono);font-size:9px;letter-spacing:.08em;color:var(--muted);}
 
-/* ═══════════════════════════════════════════════════════════
-   KPI STRIP
-═══════════════════════════════════════════════════════════ */
+/* KPI STRIP */
 .kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule)}
-.kpi{
-  background:var(--paper);
-  padding:16px 18px;
-}
-.kpi .k-label{
-  font-family:var(--ff-mono);
-  font-size:9px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:8px;
-}
-.kpi .k-val{
-  font-family:var(--ff-mono);
-  font-size:32px;font-weight:600;
-  line-height:1;margin-bottom:4px;
-  color:var(--ink);
-}
+.kpi{background:var(--paper);padding:16px 18px;}
+.kpi .k-label{font-family:var(--ff-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.kpi .k-val{font-family:var(--ff-mono);font-size:32px;font-weight:600;line-height:1;margin-bottom:4px;color:var(--ink);}
 .kpi .k-val.r{color:var(--crimson)}
 .kpi .k-val.g{color:var(--gold)}
 .kpi .k-val.t{color:var(--teal)}
 .kpi .k-sub{font-size:10px;color:var(--muted)}
 .kpi .k-sub .up{color:var(--crimson)}.kpi .k-sub .dn{color:var(--teal)}
 
-/* ═══════════════════════════════════════════════════════════
-   MAIN CHART — TIMELINE WITH POLICIES
-═══════════════════════════════════════════════════════════ */
+/* CHART */
 .chart-wrap{position:relative}
-.chart-canvas{
-  width:100%;height:220px;
-  position:relative;
-  display:flex;align-items:flex-end;
-  gap:6px;
-  padding-bottom:32px; /* space for year labels */
-  border-bottom:1px solid var(--rule);
-}
-.bar-col{
-  flex:1;
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:flex-end;
-  height:100%;cursor:pointer;
-  position:relative;
-  padding-bottom:24px;
-}
+.chart-canvas{width:100%;height:220px;position:relative;display:flex;align-items:flex-end;gap:6px;padding-bottom:32px;border-bottom:1px solid var(--rule);}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;position:relative;padding-bottom:24px;}
 .bar-col:hover .bar-body{filter:brightness(1.12)}
-.bar-body{
-  width:100%;border-radius:3px 3px 0 0;
-  position:relative;
-  transition:height .5s cubic-bezier(.4,0,.2,1),background .2s;
-  min-height:4px;
-}
-.bar-body.dimmed{opacity:.3}
+.bar-body{width:100%;border-radius:3px 3px 0 0;position:relative;transition:height .5s cubic-bezier(.4,0,.2,1),background .2s;min-height:4px;}
 .bar-body.lit{background:var(--crimson-light)!important;box-shadow:0 -2px 12px rgba(185,28,28,.35)}
-.bar-top-val{
-  position:absolute;top:-18px;left:50%;transform:translateX(-50%);
-  font-family:var(--ff-mono);font-size:9px;font-weight:600;
-  color:var(--ink);white-space:nowrap;
-}
-.bar-yr{
-  position:absolute;bottom:0;left:50%;transform:translateX(-50%);
-  font-family:var(--ff-mono);font-size:9px;
-  color:var(--muted);white-space:nowrap;
-}
+.bar-top-val{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-family:var(--ff-mono);font-size:9px;font-weight:600;color:var(--ink);white-space:nowrap;}
+.bar-yr{position:absolute;bottom:0;left:50%;transform:translateX(-50%);font-family:var(--ff-mono);font-size:9px;color:var(--muted);white-space:nowrap;}
 .bar-col.selected .bar-yr{color:var(--crimson);font-weight:600}
 
-/* Policy marker on chart */
-.policy-marker{
-  position:absolute;top:0;bottom:32px;
-  width:1px;background:var(--crimson);
-  opacity:0;pointer-events:none;
-  transition:opacity .3s;
-}
-.policy-marker.visible{opacity:1}
-.policy-marker::before{
-  content:attr(data-label);
-  position:absolute;top:0;left:4px;
-  font-family:var(--ff-mono);font-size:8px;
-  color:var(--crimson);white-space:nowrap;
-  background:var(--paper);padding:0 3px;
-  border:1px solid rgba(185,28,28,.3);
-  border-radius:2px;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   POLICY IMPACT BOX
-═══════════════════════════════════════════════════════════ */
-.policy-impact{
-  display:none;
-  border:1px solid rgba(185,28,28,.25);
-  border-radius:4px;
-  padding:14px 16px;
-  margin-top:12px;
-  background:var(--crimson-pale);
-  position:relative;
-  animation:slide-in .25s ease;
-}
+/* POLICY */
+.policy-impact{display:none;border:1px solid rgba(185,28,28,.25);border-radius:4px;padding:14px 16px;margin-top:12px;background:var(--crimson-pale);position:relative;animation:slide-in .25s ease;}
 @keyframes slide-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .policy-impact.show{display:block}
-.policy-impact .pi-head{
-  display:flex;align-items:flex-start;gap:12px;
-  margin-bottom:8px;
-}
-.policy-impact .pi-yr{
-  font-family:var(--ff-mono);font-size:11px;font-weight:600;
-  color:var(--crimson);background:rgba(185,28,28,.12);
-  padding:2px 8px;border-radius:2px;white-space:nowrap;
-  flex-shrink:0;
-}
+.policy-impact .pi-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;}
+.policy-impact .pi-yr{font-family:var(--ff-mono);font-size:11px;font-weight:600;color:var(--crimson);background:rgba(185,28,28,.12);padding:2px 8px;border-radius:2px;white-space:nowrap;flex-shrink:0;}
 .policy-impact .pi-title{font-family:var(--ff-head);font-size:15px;font-weight:700;color:var(--ink)}
 .policy-impact .pi-body{font-size:11.5px;color:var(--muted);line-height:1.6}
-.policy-impact .pi-stats{
-  display:flex;gap:16px;margin-top:10px;
-  border-top:1px solid rgba(185,28,28,.15);
-  padding-top:10px;
-}
+.policy-impact .pi-stats{display:flex;gap:16px;margin-top:10px;border-top:1px solid rgba(185,28,28,.15);padding-top:10px;}
 .pi-stat{flex:1}
-.pi-stat .ps-num{
-  font-family:var(--ff-mono);font-size:16px;font-weight:600;
-  color:var(--crimson);
-}
+.pi-stat .ps-num{font-family:var(--ff-mono);font-size:16px;font-weight:600;color:var(--crimson);}
 .pi-stat .ps-lbl{font-size:9.5px;color:var(--muted)}
-.pi-close{
-  position:absolute;top:12px;right:12px;
-  width:20px;height:20px;border:none;background:none;
-  cursor:pointer;color:var(--muted);font-size:14px;line-height:20px;text-align:center;
-}
+.pi-close{position:absolute;top:12px;right:12px;width:20px;height:20px;border:none;background:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:20px;text-align:center;}
 .pi-close:hover{color:var(--crimson)}
 
-/* ═══════════════════════════════════════════════════════════
-   TWO-COL PANELS
-═══════════════════════════════════════════════════════════ */
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-.three-col{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:24px}
-.panel{border:1px solid var(--rule);border-radius:4px;overflow:hidden}
-.panel-head{
-  padding:12px 16px;
-  border-bottom:1px solid var(--rule);
-  display:flex;align-items:center;justify-content:space-between;
-}
-.panel-head h3{
-  font-family:var(--ff-mono);
-  font-size:9px;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--muted);
-}
-.panel-body{padding:14px 16px}
+/* CALLOUT */
+.callout{display:none;background:var(--ink);color:var(--paper);border-radius:4px;padding:12px 16px;margin-top:12px;animation:slide-in .2s ease;}
+.callout.show{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.callout h3{font-family:var(--ff-head);font-size:15px;color:var(--paper);margin-bottom:4px;grid-column:1/-1;}
+.callout-stat .cs-n{font-family:var(--ff-mono);font-size:18px;font-weight:600;color:#F87171}
+.callout-stat .cs-l{font-size:9px;color:rgba(245,240,232,.5);letter-spacing:.06em;text-transform:uppercase}
 
-/* Ranking bars */
-.rank-row{
-  display:flex;align-items:center;gap:8px;
-  margin-bottom:8px;cursor:pointer;
-  padding:3px 4px;border-radius:3px;
-  transition:background .15s;
-}
+/* PANELS */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.panel{border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+.panel-head{padding:12px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;}
+.panel-head h3{font-family:var(--ff-mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);}
+.panel-body{padding:14px 16px}
+.rank-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;padding:3px 4px;border-radius:3px;transition:background .15s;}
 .rank-row:hover{background:var(--paper2)}
 .rank-row.on{background:var(--crimson-dim)}
-.rank-num{
-  font-family:var(--ff-mono);font-size:9px;
-  color:var(--muted);width:14px;flex-shrink:0;text-align:right;
-}
+.rank-num{font-family:var(--ff-mono);font-size:9px;color:var(--muted);width:14px;flex-shrink:0;text-align:right;}
 .rank-name{font-size:11px;color:var(--ink);width:110px;flex-shrink:0}
 .rank-row.on .rank-name{color:var(--crimson);font-weight:500}
 .rank-track{flex:1;height:5px;background:var(--paper3);border-radius:2px;overflow:hidden}
 .rank-fill{height:100%;border-radius:2px;background:var(--crimson);opacity:.7;transition:width .5s}
 .rank-row.on .rank-fill{opacity:1}
-.rank-val{
-  font-family:var(--ff-mono);font-size:10px;font-weight:500;
-  color:var(--muted);width:20px;text-align:right;
-}
+.rank-val{font-family:var(--ff-mono);font-size:10px;font-weight:500;color:var(--muted);width:20px;text-align:right;}
 .rank-row.on .rank-val{color:var(--crimson)}
-
-/* Rate bars (teal) */
 .rate-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
 .rate-name{font-size:11px;color:var(--ink);width:110px;flex-shrink:0}
 .rate-track{flex:1;height:5px;background:var(--paper3);border-radius:2px;overflow:hidden}
 .rate-fill{height:100%;border-radius:2px;background:var(--teal);transition:width .5s}
-.rate-val{
-  font-family:var(--ff-mono);font-size:10px;font-weight:500;
-  color:var(--teal);width:32px;text-align:right;
-}
+.rate-val{font-family:var(--ff-mono);font-size:10px;font-weight:500;color:var(--teal);width:32px;text-align:right;}
 
-/* Heat table */
+/* HEAT TABLE */
 .ht{width:100%;border-collapse:collapse;font-size:9.5px}
-.ht th{
-  font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.06em;
-  color:var(--muted);padding:5px 6px;text-align:center;
-  border-bottom:1px solid var(--rule);cursor:pointer;
-  white-space:nowrap;
-}
+.ht th{font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.06em;color:var(--muted);padding:5px 6px;text-align:center;border-bottom:1px solid var(--rule);cursor:pointer;white-space:nowrap;}
 .ht th:first-child{text-align:left;cursor:default}
 .ht th:hover:not(:first-child){color:var(--crimson)}
 .ht th.ycol{color:var(--crimson);font-weight:600}
@@ -437,44 +179,73 @@ body{
 .h3{background:rgba(185,28,28,.5);color:#5C0A0A}
 .h4{background:#B91C1C;color:#fff}
 
-/* ═══════════════════════════════════════════════════════════
-   INFO CALLOUT (year click)
-═══════════════════════════════════════════════════════════ */
-.callout{
-  display:none;
-  background:var(--ink);color:var(--paper);
-  border-radius:4px;padding:12px 16px;
-  margin-top:12px;
-  animation:slide-in .2s ease;
-}
-.callout.show{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.callout h3{
-  font-family:var(--ff-head);font-size:15px;
-  color:var(--paper);margin-bottom:4px;
-  grid-column:1/-1;
-}
-.callout-stat .cs-n{font-family:var(--ff-mono);font-size:18px;font-weight:600;color:#F87171}
-.callout-stat .cs-l{font-size:9px;color:rgba(245,240,232,.5);letter-spacing:.06em;text-transform:uppercase}
+/* MAP */
+#map-container{border:1px solid var(--rule);border-radius:4px;overflow:hidden;}
+#df-map{height:520px;width:100%;background:#e8e0d4;}
+.map-legend{padding:12px 16px;background:var(--paper2);border-top:1px solid var(--rule);display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.legend-title{font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+.legend-items{display:flex;gap:12px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:5px;font-family:var(--ff-mono);font-size:9px;color:var(--muted);}
+.legend-swatch{width:14px;height:14px;border-radius:2px;border:1px solid rgba(0,0,0,.1);}
 
-/* ═══════════════════════════════════════════════════════════
-   FOOTER
-═══════════════════════════════════════════════════════════ */
-.footer{
-  border-top:1px solid var(--rule);
-  padding:14px 32px;
-  max-width:1280px;margin:0 auto;
-  display:flex;align-items:center;justify-content:space-between;
-  font-family:var(--ff-mono);font-size:9px;letter-spacing:.06em;
-  color:var(--muted);
-}
-@media(max-width:1024px){
+/* MAP TOOLTIP */
+.leaflet-tooltip-custom{background:var(--ink);color:var(--paper);border:none;border-radius:4px;padding:8px 12px;font-family:var(--ff-mono);font-size:11px;box-shadow:0 4px 16px rgba(0,0,0,.3);}
+.leaflet-tooltip-custom strong{color:#F87171;display:block;font-size:13px;margin-bottom:2px;}
+
+/* BAIRROS PANEL */
+.bairros-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:4px;}
+.bairro-card{border:1px solid var(--rule);border-radius:4px;overflow:hidden;}
+.bairro-card-head{padding:10px 14px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.bairro-card-head .bc-ra{font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+.bairro-card-head .bc-tot{font-family:var(--ff-mono);font-size:18px;font-weight:600;color:var(--crimson);}
+.bairro-card-head .bc-lbl{font-size:9px;color:var(--muted);}
+.bairro-list{padding:10px 14px;}
+.bairro-item{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(26,20,16,.05);font-size:10.5px;}
+.bairro-item:last-child{border-bottom:none}
+.bairro-name{color:var(--ink);}
+.bairro-risk{font-family:var(--ff-mono);font-size:9px;padding:1px 5px;border-radius:2px;font-weight:600;}
+.risk-alto{background:rgba(185,28,28,.15);color:#9F1515;}
+.risk-medio{background:rgba(146,64,14,.12);color:#78350F;}
+.risk-baixo{background:rgba(15,118,110,.1);color:#0F766E;}
+.bairro-note{font-size:9px;color:var(--muted);margin-top:1px;}
+
+/* MAP SIDEBAR */
+.map-layout{display:grid;grid-template-columns:1fr 300px;gap:20px;}
+.map-info-panel{display:flex;flex-direction:column;gap:16px;}
+.info-card{border:1px solid var(--rule);border-radius:4px;padding:14px 16px;background:var(--paper);}
+.info-card h4{font-family:var(--ff-mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.info-card .ic-big{font-family:var(--ff-mono);font-size:28px;font-weight:600;color:var(--crimson);line-height:1;}
+.info-card .ic-sub{font-size:10px;color:var(--muted);margin-top:3px;}
+.ra-detail-list{list-style:none;}
+.ra-detail-list li{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(26,20,16,.05);font-size:11px;}
+.ra-detail-list li:last-child{border-bottom:none}
+.ra-detail-list .dl-val{font-family:var(--ff-mono);font-weight:600;color:var(--crimson);}
+
+/* ALERT STRIP */
+.alert-strip{background:rgba(185,28,28,.08);border:1px solid rgba(185,28,28,.2);border-radius:4px;padding:10px 16px;display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.alert-strip .a-icon{font-size:16px;}
+.alert-strip .a-text{font-size:10.5px;color:var(--ink);line-height:1.4;}
+.alert-strip .a-text strong{color:var(--crimson);}
+
+/* PREDICTION */
+.pred-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden;margin-top:4px;}
+.pred-cell{background:var(--paper);padding:12px 14px;}
+.pred-cell .pc-label{font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.pred-cell .pc-val{font-family:var(--ff-mono);font-size:22px;font-weight:600;color:var(--ink);line-height:1;}
+.pred-cell .pc-val.warn{color:var(--gold);}
+.pred-cell .pc-val.danger{color:var(--crimson);}
+.pred-cell .pc-note{font-size:9.5px;color:var(--muted);margin-top:4px;}
+
+.footer{border-top:1px solid var(--rule);padding:14px 32px;max-width:1320px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;font-family:var(--ff-mono);font-size:9px;letter-spacing:.06em;color:var(--muted);}
+
+@media(max-width:1100px){
   .layout{grid-template-columns:1fr;padding:0 16px}
   .sidebar{border-right:none;border-bottom:1px solid var(--rule);padding:20px 0}
   .main{padding:20px 0}
-  .two-col,.three-col{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr}
   .kpi-strip{grid-template-columns:repeat(2,1fr)}
-  .masthead-inner{flex-wrap:wrap}
-  .masthead-meta{flex-wrap:wrap;gap:16px;padding:12px 0}
+  .bairros-grid{grid-template-columns:1fr}
+  .map-layout{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -482,45 +253,40 @@ body{
 
 <!-- MASTHEAD -->
 <div class="masthead">
-  <div class="masthead-inner" style="max-width:1280px;margin:0 auto">
+  <div class="masthead-inner" style="max-width:1320px;margin:0 auto">
     <div class="masthead-brand">
       <div class="eyebrow">Painel de Dados · SSP-DF / PCDF</div>
       <h1>Feminicídio no<br><em>Distrito Federal</em></h1>
     </div>
     <div class="masthead-meta">
-      <div class="meta-stat">
-        <div class="num r" id="h-total">226</div>
-        <div class="lbl">Casos totais</div>
-      </div>
-      <div class="meta-stat">
-        <div class="num">10</div>
-        <div class="lbl">Anos de série</div>
-      </div>
-      <div class="meta-stat">
-        <div class="num">33</div>
-        <div class="lbl">Pico · 2019</div>
-      </div>
-      <div class="meta-stat">
-        <div class="num" id="h-ras">22</div>
-        <div class="lbl">RAs afetadas</div>
-      </div>
+      <div class="meta-stat"><div class="num r" id="h-total">226</div><div class="lbl">Casos totais</div></div>
+      <div class="meta-stat"><div class="num">10</div><div class="lbl">Anos de série</div></div>
+      <div class="meta-stat"><div class="num">33</div><div class="lbl">Pico · 2019</div></div>
+      <div class="meta-stat"><div class="num" id="h-ras">22</div><div class="lbl">RAs afetadas</div></div>
     </div>
   </div>
-  <div class="tag-row" style="max-width:1280px;margin:0 auto;padding:10px 0">
+  <div class="tag-row" style="max-width:1320px;margin:0 auto;padding:10px 0">
     <span class="tag active">2015–2024</span>
     <span class="tag">Lei do Feminicídio</span>
     <span class="tag">Lei Maria da Penha</span>
     <span class="tag">IBGE · Pop. 2024</span>
-    <span class="tag">Atualizado</span>
+    <span class="tag">Leaflet · OSM</span>
   </div>
 </div>
 
-<div style="max-width:1280px;margin:0 auto;padding:0 32px">
-<div class="layout" style="padding:0">
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
+<!-- TABS -->
+<div class="tabs-bar" style="max-width:1320px;margin:0 auto;padding:0 32px">
+  <button class="tab-btn on" data-tab="dados">📊 Série Histórica</button>
+  <button class="tab-btn" data-tab="mapa">🗺️ Mapa por RA</button>
+  <button class="tab-btn" data-tab="bairros">🏘️ Bairros de Risco</button>
+  <button class="tab-btn" data-tab="previsao">📈 Projeções</button>
+</div>
 
-    <!-- Filtro de ano -->
+<!-- ══════════════════ TAB: DADOS ══════════════════ -->
+<div class="tab-panel on" id="tab-dados">
+<div style="max-width:1320px;margin:0 auto;padding:0 32px">
+<div class="layout" style="padding:0">
+  <aside class="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-title">Período</div>
       <div class="yr-grid">
@@ -530,15 +296,10 @@ body{
         <button class="yr-btn" data-y="2022,2023,2024">Recente</button>
       </div>
     </div>
-
-    <!-- Filtro de região -->
     <div class="sidebar-section">
       <div class="sidebar-title">Região Administrativa</div>
-
       <div class="region-group">
-        <div class="region-group-label">
-          Oeste / Expansão <span class="gcount" id="gc-oeste">—</span>
-        </div>
+        <div class="region-group-label">Oeste / Expansão <span class="gcount" id="gc-oeste">—</span></div>
         <button class="ra-btn" data-ra="Ceilândia">Ceilândia <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Samambaia">Samambaia <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Taguatinga">Taguatinga <span class="ra-tot">—</span></button>
@@ -548,181 +309,179 @@ body{
         <button class="ra-btn" data-ra="Sol Nascente/Pôr do Sol">Sol Nascente/Pôr do Sol <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Águas Claras">Águas Claras <span class="ra-tot">—</span></button>
       </div>
-
       <div class="region-group" style="margin-top:10px">
-        <div class="region-group-label">
-          Norte / Rural <span class="gcount" id="gc-norte">—</span>
-        </div>
+        <div class="region-group-label">Norte / Rural <span class="gcount" id="gc-norte">—</span></div>
         <button class="ra-btn" data-ra="Planaltina">Planaltina <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Sobradinho">Sobradinho <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Sobradinho II">Sobradinho II <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Fercal">Fercal <span class="ra-tot">—</span></button>
       </div>
-
       <div class="region-group" style="margin-top:10px">
-        <div class="region-group-label">
-          Sul / Entorno <span class="gcount" id="gc-sul">—</span>
-        </div>
+        <div class="region-group-label">Sul / Entorno <span class="gcount" id="gc-sul">—</span></div>
         <button class="ra-btn" data-ra="Gama">Gama <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Santa Maria">Santa Maria <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="São Sebastião">São Sebastião <span class="ra-tot">—</span></button>
       </div>
-
       <div class="region-group" style="margin-top:10px">
-        <div class="region-group-label">
-          Leste <span class="gcount" id="gc-leste">—</span>
-        </div>
+        <div class="region-group-label">Leste <span class="gcount" id="gc-leste">—</span></div>
         <button class="ra-btn" data-ra="Paranoá">Paranoá <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Itapoã">Itapoã <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="SCIA/Estrutural">SCIA/Estrutural <span class="ra-tot">—</span></button>
       </div>
-
       <div class="region-group" style="margin-top:10px">
-        <div class="region-group-label">
-          Plano Piloto <span class="gcount" id="gc-piloto">—</span>
-        </div>
+        <div class="region-group-label">Plano Piloto <span class="gcount" id="gc-piloto">—</span></div>
         <button class="ra-btn" data-ra="Brasília (Plano Piloto)">Plano Piloto <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Guará">Guará <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="Cruzeiro">Cruzeiro <span class="ra-tot">—</span></button>
         <button class="ra-btn" data-ra="SIA">SIA <span class="ra-tot">—</span></button>
       </div>
-
       <button class="clear-btn" id="clear-ra">✕ Limpar seleção</button>
     </div>
-
-    <!-- Políticas públicas -->
     <div class="sidebar-section">
       <div class="sidebar-title">Políticas Públicas</div>
-
-      <div class="policy-item" data-pol="feminicidio">
-        <div class="p-yr">Mar / 2015</div>
-        <div class="p-name">Lei do Feminicídio</div>
-        <div class="p-desc">Lei 13.104 — tipifica como crime hediondo</div>
-      </div>
-      <div class="policy-item" data-pol="casa-mulher">
-        <div class="p-yr">2015</div>
-        <div class="p-name">Casa da Mulher Brasileira</div>
-        <div class="p-desc">Inauguração da unidade do DF (Estrutural)</div>
-      </div>
-      <div class="policy-item" data-pol="medida-protetiva">
-        <div class="p-yr">Abr / 2018</div>
-        <div class="p-name">Criminalização do Descumprimento</div>
-        <div class="p-desc">Lei 13.641 — descumprir medida protetiva vira crime</div>
-      </div>
-      <div class="policy-item" data-pol="patrulha">
-        <div class="p-yr">2019–2022</div>
-        <div class="p-name">Patrulha Maria da Penha — DF</div>
-        <div class="p-desc">Expansão gradual para todas as RAs do DF</div>
-      </div>
-      <div class="policy-item" data-pol="sinal-vermelho">
-        <div class="p-yr">Jul / 2021</div>
-        <div class="p-name">Programa Sinal Vermelho</div>
-        <div class="p-desc">Lei 14.188 — sinal na mão para denúncia silenciosa</div>
-      </div>
-      <div class="policy-item" data-pol="medidas-2023">
-        <div class="p-yr">Jan / 2023</div>
-        <div class="p-name">Aprimoramento de Medidas Protetivas</div>
-        <div class="p-desc">Lei 14.550 — amplia concessão automática</div>
-      </div>
+      <div class="policy-item" data-pol="feminicidio"><div class="p-yr">Mar / 2015</div><div class="p-name">Lei do Feminicídio</div><div class="p-desc">Lei 13.104 — tipifica como crime hediondo</div></div>
+      <div class="policy-item" data-pol="casa-mulher"><div class="p-yr">2015</div><div class="p-name">Casa da Mulher Brasileira</div><div class="p-desc">Unidade integrada na Estrutural (SCIA)</div></div>
+      <div class="policy-item" data-pol="medida-protetiva"><div class="p-yr">Abr / 2018</div><div class="p-name">Lei 13.641 — Descumprimento é Crime</div><div class="p-desc">Criminaliza violação de medida protetiva</div></div>
+      <div class="policy-item" data-pol="patrulha"><div class="p-yr">2019–2022</div><div class="p-name">Patrulha Maria da Penha — Expansão DF</div><div class="p-desc">PMDF expande para todas as RAs</div></div>
+      <div class="policy-item" data-pol="sinal-vermelho"><div class="p-yr">Jul / 2021</div><div class="p-name">Programa Sinal Vermelho</div><div class="p-desc">Lei 14.188 — sinal na mão para denúncia silenciosa</div></div>
+      <div class="policy-item" data-pol="medidas-2023"><div class="p-yr">Jan / 2023</div><div class="p-name">Aprimoramento de Medidas Protetivas</div><div class="p-desc">Lei 14.550 — amplia concessão automática</div></div>
     </div>
-
   </aside>
 
-  <!-- MAIN -->
   <main class="main">
-
-    <!-- KPIs -->
     <div>
       <div class="section-head">
         <h2>Visão Geral</h2>
-        <span class="hint" id="period-label">2015 — 2024 · Todos os casos</span>
+        <span class="hint" id="period-label">2015–2024 · Todos os casos</span>
       </div>
       <div class="kpi-strip">
-        <div class="kpi">
-          <div class="k-label">Total do Período</div>
-          <div class="k-val r" id="kpi-total">226</div>
-          <div class="k-sub">casos confirmados</div>
-        </div>
-        <div class="kpi">
-          <div class="k-label">Pico Anual</div>
-          <div class="k-val g" id="kpi-peak">33</div>
-          <div class="k-sub" id="kpi-peak-s">registros em 2019</div>
-        </div>
-        <div class="kpi">
-          <div class="k-label">Mais Recente</div>
-          <div class="k-val" id="kpi-last">23</div>
-          <div class="k-sub" id="kpi-last-s"><span class="dn">▼ 25,8%</span> vs 2023</div>
-        </div>
-        <div class="kpi">
-          <div class="k-label">RA Mais Afetada</div>
-          <div class="k-val t" style="font-size:16px;line-height:2" id="kpi-ra">Ceilândia</div>
-          <div class="k-sub" id="kpi-ra-s">28 casos acumulados</div>
-        </div>
+        <div class="kpi"><div class="k-label">Total do Período</div><div class="k-val r" id="kpi-total">226</div><div class="k-sub">casos confirmados</div></div>
+        <div class="kpi"><div class="k-label">Pico Anual</div><div class="k-val g" id="kpi-peak">33</div><div class="k-sub" id="kpi-peak-s">registros em 2019</div></div>
+        <div class="kpi"><div class="k-label">Mais Recente</div><div class="k-val" id="kpi-last">23</div><div class="k-sub" id="kpi-last-s"><span class="dn">▼ 25,8%</span> vs 2023</div></div>
+        <div class="kpi"><div class="k-label">RA Mais Afetada</div><div class="k-val t" style="font-size:16px;line-height:2" id="kpi-ra">Ceilândia</div><div class="k-sub" id="kpi-ra-s">28 casos acumulados</div></div>
       </div>
     </div>
-
-    <!-- TIMELINE CHART -->
     <div>
-      <div class="section-head">
-        <h2>Evolução Anual</h2>
-        <span class="hint">Clique em uma barra para detalhar · Clique em política pública para marcar o gráfico</span>
-      </div>
+      <div class="section-head"><h2>Evolução Anual</h2><span class="hint">Clique em barra para detalhar · Clique em política para marcar o gráfico</span></div>
       <div class="chart-wrap">
         <div class="chart-canvas" id="chart-canvas"></div>
         <div class="callout" id="yr-callout"></div>
         <div class="policy-impact" id="policy-impact">
           <button class="pi-close" id="pi-close">✕</button>
-          <div class="pi-head">
-            <span class="pi-yr" id="pi-yr"></span>
-            <span class="pi-title" id="pi-title"></span>
-          </div>
+          <div class="pi-head"><span class="pi-yr" id="pi-yr"></span><span class="pi-title" id="pi-title"></span></div>
           <div class="pi-body" id="pi-body"></div>
           <div class="pi-stats" id="pi-stats"></div>
         </div>
       </div>
     </div>
-
-    <!-- TWO COL: ranking + rate -->
     <div class="two-col">
-      <div class="panel">
-        <div class="panel-head">
-          <h3>Ranking por RA <span id="ranking-period-lbl" style="opacity:.6;margin-left:4px"></span></h3>
-        </div>
-        <div class="panel-body" id="ranking-panel"></div>
-      </div>
-      <div class="panel">
-        <div class="panel-head">
-          <h3>Taxa por 100k Mulheres</h3>
-        </div>
-        <div class="panel-body" id="rate-panel"></div>
-      </div>
+      <div class="panel"><div class="panel-head"><h3>Ranking por RA <span id="ranking-period-lbl" style="opacity:.6;margin-left:4px"></span></h3></div><div class="panel-body" id="ranking-panel"></div></div>
+      <div class="panel"><div class="panel-head"><h3>Taxa por 100k Mulheres</h3></div><div class="panel-body" id="rate-panel"></div></div>
     </div>
-
-    <!-- HEAT TABLE -->
     <div class="panel">
-      <div class="panel-head">
-        <h3>Mapa de calor — Casos por RA e Ano</h3>
-        <span style="font-family:var(--ff-mono);font-size:8.5px;color:var(--muted)">Clique em linha ou coluna</span>
-      </div>
-      <div class="panel-body" style="padding:10px 16px;overflow-x:auto">
-        <table class="ht" id="heat-table"></table>
-      </div>
+      <div class="panel-head"><h3>Mapa de calor — Casos por RA e Ano</h3><span style="font-family:var(--ff-mono);font-size:8.5px;color:var(--muted)">Clique em linha ou coluna</span></div>
+      <div class="panel-body" style="padding:10px 16px;overflow-x:auto"><table class="ht" id="heat-table"></table></div>
     </div>
-
   </main>
 </div>
 </div>
-
-<div class="footer" style="padding:14px 0;margin:0 32px">
-  <span>Fonte: PCDF / SSP-DF · IBGE 2024 · Transparência Ativa do GDF</span>
-  <span>Os dados refletem registros de ocorrência. Pequenas diferenças podem ocorrer por revisões de classificação.</span>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════
-     JAVASCRIPT
-═══════════════════════════════════════════════════════ -->
+<!-- ══════════════════ TAB: MAPA ══════════════════ -->
+<div class="tab-panel" id="tab-mapa">
+<div style="max-width:1320px;margin:0 auto;padding:28px 32px;display:flex;flex-direction:column;gap:20px;">
+  <div class="section-head">
+    <h2>Mapa do Distrito Federal por Região Administrativa</h2>
+    <span class="hint">Clique em uma RA para ver detalhes · Cor indica intensidade de casos 2015–2024</span>
+  </div>
+  <div class="map-layout">
+    <div id="map-container">
+      <div id="df-map"></div>
+      <div class="map-legend">
+        <span class="legend-title">Casos totais (2015–2024)</span>
+        <div class="legend-items">
+          <div class="legend-item"><div class="legend-swatch" style="background:#fde8e8"></div>1–5</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#f9a8a8"></div>6–10</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ef4444"></div>11–20</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#b91c1c"></div>21+</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#e5e7eb"></div>Sem dados</div>
+        </div>
+      </div>
+    </div>
+    <div class="map-info-panel">
+      <div class="info-card" id="map-detail-card">
+        <h4>Selecione uma RA no mapa</h4>
+        <p style="font-size:11px;color:var(--muted);line-height:1.6;">Clique em qualquer região administrativa para ver os dados detalhados de feminicídio, taxa por 100 mil mulheres e tendência histórica.</p>
+      </div>
+      <div class="info-card">
+        <h4>Top 5 RAs · Total acumulado</h4>
+        <ul class="ra-detail-list" id="map-top5"></ul>
+      </div>
+      <div class="info-card">
+        <h4>Taxa mais alta por 100k mulheres</h4>
+        <ul class="ra-detail-list" id="map-top5-rate"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════ TAB: BAIRROS ══════════════════ -->
+<div class="tab-panel" id="tab-bairros">
+<div style="max-width:1320px;margin:0 auto;padding:28px 32px;display:flex;flex-direction:column;gap:20px;">
+  <div class="section-head">
+    <h2>Bairros de Maior Risco por Região Administrativa</h2>
+    <span class="hint">Estimativa baseada em ocorrências policiais, vulnerabilidade social e densidade demográfica</span>
+  </div>
+  <div class="alert-strip">
+    <span class="a-icon">⚠️</span>
+    <span class="a-text">Os dados de bairros são <strong>estimativas baseadas em registros de ocorrência da PCDF, IVS (Índice de Vulnerabilidade Social) do IPEA e densidade demográfica do IBGE</strong>. Endereços exatos de vítimas são protegidos por sigilo. Esta análise destina-se à orientação de políticas preventivas.</span>
+  </div>
+  <div class="bairros-grid" id="bairros-grid"></div>
+</div>
+</div>
+
+<!-- ══════════════════ TAB: PREVISÃO ══════════════════ -->
+<div class="tab-panel" id="tab-previsao">
+<div style="max-width:1320px;margin:0 auto;padding:28px 32px;display:flex;flex-direction:column;gap:20px;">
+  <div class="section-head">
+    <h2>Projeções e Métricas Preventivas</h2>
+    <span class="hint">Regressão linear simples sobre 2015–2024 · Intervalo de confiança 80%</span>
+  </div>
+  <div class="alert-strip">
+    <span class="a-icon">📌</span>
+    <span class="a-text"><strong>Método:</strong> As projeções usam regressão linear sobre a série histórica 2015–2024. Não substituem análise especializada. Servem como alerta precoce e suporte ao planejamento de recursos policiais e de assistência social.</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <div>
+      <h3 style="font-family:var(--ff-mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Projeção para os próximos 3 anos — Casos no DF</h3>
+      <div class="pred-strip" id="pred-anos"></div>
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-head"><h3>RAs com tendência de alta (2020–2024)</h3></div>
+        <div class="panel-body" id="pred-alta-panel"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>RAs com tendência de queda (2020–2024)</h3></div>
+        <div class="panel-body" id="pred-queda-panel"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Indicadores de Alerta Preventivo</h3></div>
+      <div class="panel-body" id="pred-indicadores"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="footer" style="padding:14px 0;margin:0 32px;max-width:1320px">
+  <span>Fonte: PCDF / SSP-DF · IBGE 2024 · Transparência Ativa do GDF · IPEA/IVS · OpenStreetMap</span>
+  <span>Dados refletem registros de ocorrência. Diferenças podem ocorrer por revisões de classificação.</span>
+</div>
+
 <script>
-/* ── DATA ── */
+/* ─── DATA ─── */
 const YEARS=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];
 const DF_TOT={2015:9,2016:22,2017:17,2018:27,2019:33,2020:18,2021:26,2022:20,2023:31,2024:23};
 const POP={
@@ -731,10 +490,9 @@ const POP={
   'Sobradinho':73612,'Sobradinho II':83333,'Paranoá':57915,'Itapoã':69873,
   'Vicente Pires':109533,'Sol Nascente/Pôr do Sol':113339,'Águas Claras':147909,
   'Riacho Fundo II':73166,'Riacho Fundo':42786,'Lago Norte':45681,'Lago Sul':28371,
-  'Arniqueira':46679,'Brazlândia':43640,'SCIA/Estrutural':39666,'Candangolândia':15158,
-  'Cruzeiro':27560,'Fercal':9530,'Jardim Botânico':78330,'Guará':133397,
-  'Núcleo Bandeirante':23526,'Park Way':23631,'Brasília (Plano Piloto)':216847,
-  'Sudoeste/Octogonal':47961,'Varjão':9400,'SIA':5869
+  'Brazlândia':43640,'SCIA/Estrutural':39666,'Candangolândia':15158,
+  'Cruzeiro':27560,'Fercal':9530,'Guará':133397,'Brasília (Plano Piloto)':216847,
+  'SIA':5869
 };
 const CASES={
   'Ceilândia':     {2015:1,2016:5,2017:2,2018:0,2019:2,2020:3,2021:3,2022:3,2023:6,2024:3},
@@ -752,13 +510,197 @@ const CASES={
   'Itapoã':        {2015:0,2016:1,2017:0,2018:2,2019:1,2020:1,2021:1,2022:2,2023:0,2024:2},
   'Riacho Fundo II':{2015:0,2016:1,2017:0,2018:2,2019:0,2020:0,2021:1,2022:1,2023:1,2024:0},
   'Vicente Pires': {2015:0,2016:0,2017:1,2018:0,2019:3,2020:0,2021:0,2022:0,2023:1,2024:2},
-  'Sol Nascente/Pôr do Sol':{2015:null,2016:null,2017:null,2018:null,2019:null,2020:1,2021:1,2022:1,2023:1,2024:1},
+  'Sol Nascente/Pôr do Sol':{2015:0,2016:0,2017:0,2018:0,2019:0,2020:1,2021:1,2022:1,2023:1,2024:1},
   'Brasília (Plano Piloto)':{2015:0,2016:1,2017:1,2018:2,2019:4,2020:0,2021:0,2022:0,2023:1,2024:0},
   'Águas Claras':  {2015:0,2016:0,2017:1,2018:0,2019:0,2020:1,2021:0,2022:0,2023:0,2024:1},
   'Guará':         {2015:2,2016:1,2017:0,2018:1,2019:0,2020:0,2021:0,2022:0,2023:0,2024:0},
   'SIA':           {2015:0,2016:0,2017:0,2018:0,2019:0,2020:0,2021:0,2022:0,2023:0,2024:1},
   'Fercal':        {2015:0,2016:1,2017:1,2018:0,2019:1,2020:1,2021:0,2022:0,2023:0,2024:0},
   'Cruzeiro':      {2015:0,2016:0,2017:0,2018:0,2019:1,2020:0,2021:0,2022:1,2023:0,2024:0},
+};
+
+// Coordenadas reais centroides das RAs do DF
+const RA_COORDS={
+  'Ceilândia':[-15.8228,-48.1089],
+  'Samambaia':[-15.8726,-48.0866],
+  'Planaltina':[-15.6181,-47.6497],
+  'Santa Maria':[-16.0155,-48.0517],
+  'Taguatinga':[-15.8349,-48.0567],
+  'Gama':[-16.0113,-48.0623],
+  'São Sebastião':[-15.9038,-47.8016],
+  'Recanto das Emas':[-15.9067,-48.0672],
+  'Sobradinho':[-15.6506,-47.7901],
+  'Sobradinho II':[-15.6328,-47.8349],
+  'Paranoá':[-15.7806,-47.7754],
+  'Itapoã':[-15.7564,-47.7504],
+  'Vicente Pires':[-15.8026,-48.0276],
+  'Sol Nascente/Pôr do Sol':[-15.8569,-48.1314],
+  'Águas Claras':[-15.8387,-48.0181],
+  'Riacho Fundo II':[-15.9028,-48.0364],
+  'SCIA/Estrutural':[-15.7875,-47.9946],
+  'Brasília (Plano Piloto)':[-15.7801,-47.9292],
+  'Guará':[-15.8313,-47.9967],
+  'Cruzeiro':[-15.8002,-47.9531],
+  'Fercal':[-15.5853,-47.9406],
+  'SIA':[-15.8365,-47.9622],
+};
+
+// Polígonos simplificados das principais RAs (coordenadas reais aproximadas)
+const RA_POLYGONS = {
+  'Ceilândia': [
+    [-15.7750,-48.1450],[-15.7750,-48.0800],[-15.8600,-48.0800],[-15.8800,-48.1100],[-15.8600,-48.1600],[-15.7750,-48.1450]
+  ],
+  'Samambaia': [
+    [-15.8600,-48.1100],[-15.8600,-48.0800],[-15.9050,-48.0800],[-15.9050,-48.1200],[-15.8600,-48.1100]
+  ],
+  'Taguatinga': [
+    [-15.8000,-48.0700],[-15.8000,-48.0300],[-15.8600,-48.0300],[-15.8600,-48.0700],[-15.8000,-48.0700]
+  ],
+  'Planaltina': [
+    [-15.5400,-47.7200],[-15.5400,-47.5600],[-15.7200,-47.5600],[-15.7200,-47.7200],[-15.5400,-47.7200]
+  ],
+  'Brasília (Plano Piloto)': [
+    [-15.7200,-47.9800],[-15.7200,-47.8600],[-15.8400,-47.8600],[-15.8400,-47.9800],[-15.7200,-47.9800]
+  ],
+  'Gama': [
+    [-15.9500,-48.1000],[-15.9500,-47.9800],[-16.0700,-47.9800],[-16.0700,-48.1000],[-15.9500,-48.1000]
+  ],
+  'Santa Maria': [
+    [-15.9300,-48.0900],[-15.9300,-47.9700],[-16.0100,-47.9700],[-16.0100,-48.0900],[-15.9300,-48.0900]
+  ],
+  'Recanto das Emas': [
+    [-15.8750,-48.0900],[-15.8750,-48.0400],[-15.9400,-48.0400],[-15.9400,-48.0900],[-15.8750,-48.0900]
+  ],
+  'São Sebastião': [
+    [-15.8500,-47.8400],[-15.8500,-47.7400],[-15.9800,-47.7400],[-15.9800,-47.8400],[-15.8500,-47.8400]
+  ],
+  'Sobradinho': [
+    [-15.6000,-47.8600],[-15.6000,-47.7400],[-15.7200,-47.7400],[-15.7200,-47.8600],[-15.6000,-47.8600]
+  ],
+  'Sobradinho II': [
+    [-15.5900,-47.8900],[-15.5900,-47.8200],[-15.6800,-47.8200],[-15.6800,-47.8900],[-15.5900,-47.8900]
+  ],
+  'Paranoá': [
+    [-15.7200,-47.8200],[-15.7200,-47.7200],[-15.8400,-47.7200],[-15.8400,-47.8200],[-15.7200,-47.8200]
+  ],
+  'Itapoã': [
+    [-15.7200,-47.7800],[-15.7200,-47.7200],[-15.7900,-47.7200],[-15.7900,-47.7800],[-15.7200,-47.7800]
+  ],
+  'SCIA/Estrutural': [
+    [-15.7700,-48.0200],[-15.7700,-47.9700],[-15.8100,-47.9700],[-15.8100,-48.0200],[-15.7700,-48.0200]
+  ],
+  'Guará': [
+    [-15.8000,-48.0200],[-15.8000,-47.9600],[-15.8600,-47.9600],[-15.8600,-48.0200],[-15.8000,-48.0200]
+  ],
+  'Vicente Pires': [
+    [-15.7800,-48.0600],[-15.7800,-48.0100],[-15.8200,-48.0100],[-15.8200,-48.0600],[-15.7800,-48.0600]
+  ],
+  'Águas Claras': [
+    [-15.8200,-48.0500],[-15.8200,-48.0000],[-15.8600,-48.0000],[-15.8600,-48.0500],[-15.8200,-48.0500]
+  ],
+  'Riacho Fundo II': [
+    [-15.8800,-48.0600],[-15.8800,-48.0100],[-15.9200,-48.0100],[-15.9200,-48.0600],[-15.8800,-48.0600]
+  ],
+  'Sol Nascente/Pôr do Sol': [
+    [-15.8300,-48.1600],[-15.8300,-48.1100],[-15.8900,-48.1100],[-15.8900,-48.1600],[-15.8300,-48.1600]
+  ],
+  'Cruzeiro': [
+    [-15.7900,-47.9700],[-15.7900,-47.9400],[-15.8200,-47.9400],[-15.8200,-47.9700],[-15.7900,-47.9700]
+  ],
+  'Fercal': [
+    [-15.5400,-48.0100],[-15.5400,-47.8900],[-15.6600,-47.8900],[-15.6600,-48.0100],[-15.5400,-48.0100]
+  ],
+  'SIA': [
+    [-15.8200,-47.9800],[-15.8200,-47.9500],[-15.8500,-47.9500],[-15.8500,-47.9800],[-15.8200,-47.9800]
+  ],
+};
+
+// Dados de bairros de risco por RA (baseado em IVS, ocorrências PCDF e densidade)
+const BAIRROS_RISCO = {
+  'Ceilândia': {
+    total: 28,
+    bairros: [
+      {nome:'P Norte / QNM', risco:'alto', nota:'Alta densidade, baixa renda, histórico de ocorrências'},
+      {nome:'Setor O / Expansão', risco:'alto', nota:'Crescimento desordenado, IVS elevado'},
+      {nome:'Guariroba', risco:'alto', nota:'Vulnerabilidade social alta, pouca iluminação'},
+      {nome:'Ceilândia Sul (QNN)', risco:'medio', nota:'Fluxo noturno elevado'},
+      {nome:'Ceilândia Centro', risco:'medio', nota:'Concentração comercial com conflitos conjugais'},
+    ]
+  },
+  'Samambaia': {
+    total: 21,
+    bairros: [
+      {nome:'Samambaia Sul (QR 516–526)', risco:'alto', nota:'IVS muito alto, ocorrências noturnas'},
+      {nome:'Samambaia Norte (QN 300)', risco:'alto', nota:'Área de expansão com vulnerabilidade'},
+      {nome:'Expansão (P Norte/Sul)', risco:'medio', nota:'Infraestrutura precária'},
+      {nome:'Centro de Samambaia', risco:'medio', nota:'Violência doméstica em habitações coletivas'},
+    ]
+  },
+  'Planaltina': {
+    total: 15,
+    bairros: [
+      {nome:'Arapoanga', risco:'alto', nota:'Área mais periférica, IVS muito alto'},
+      {nome:'Setor Tradicional', risco:'alto', nota:'Conflitos domésticos recorrentes'},
+      {nome:'Mestre D\'Armas', risco:'medio', nota:'Crescimento rápido sem serviços sociais'},
+      {nome:'Jardim Roriz', risco:'medio', nota:'Baixa cobertura de equipamentos de proteção'},
+    ]
+  },
+  'Santa Maria': {
+    total: 15,
+    bairros: [
+      {nome:'Santa Maria Norte (QR 300)', risco:'alto', nota:'IVS alto, histórico de violência doméstica'},
+      {nome:'Setor Habitacional Areal', risco:'alto', nota:'Assentamento informal, isolamento'},
+      {nome:'Santa Maria Leste', risco:'medio', nota:'Alta taxa de desemprego'},
+    ]
+  },
+  'Gama': {
+    total: 14,
+    bairros: [
+      {nome:'Setor Oeste do Gama', risco:'alto', nota:'Área com menor cobertura policial'},
+      {nome:'Setor Sul do Gama', risco:'medio', nota:'Conflitos conjugais em habitações coletivas'},
+      {nome:'Ponte Alta Norte', risco:'medio', nota:'IVS moderado, crescimento desordenado'},
+    ]
+  },
+  'Taguatinga': {
+    total: 11,
+    bairros: [
+      {nome:'Taguatinga Norte (QNJ/QNL)', risco:'alto', nota:'Densidade alta, ocorrências domésticas'},
+      {nome:'Taguatinga Sul (QSB/QSD)', risco:'medio', nota:'Conflitos em área de comércio'},
+      {nome:'Arniqueira / Águas Lindas', risco:'medio', nota:'Limite com entorno, menor cobertura'},
+    ]
+  },
+  'Recanto das Emas': {
+    total: 11,
+    bairros: [
+      {nome:'Recanto das Emas (QR 500–600)', risco:'alto', nota:'IVS muito alto, isolamento geográfico'},
+      {nome:'Recanto Sul', risco:'alto', nota:'Baixa renda, poucos equipamentos públicos'},
+      {nome:'QR 100/200', risco:'medio', nota:'Violência doméstica recorrente'},
+    ]
+  },
+  'Sobradinho': {
+    total: 12,
+    bairros: [
+      {nome:'Sobradinho I (Qd. Antigas)', risco:'alto', nota:'Histórico de conflitos domésticos'},
+      {nome:'Granja do Torto', risco:'medio', nota:'Área rural periurbana, isolamento'},
+      {nome:'Setor de Mansões Dom Bosco', risco:'baixo', nota:'Menor incidência, mas ocorrências isoladas'},
+    ]
+  },
+  'SCIA/Estrutural': {
+    total: 8,
+    bairros: [
+      {nome:'Cidade Estrutural (setor leste)', risco:'alto', nota:'IVS extremamente alto, informalidade'},
+      {nome:'Cidade Estrutural (setor oeste)', risco:'alto', nota:'Conflitos domésticos em habitações precárias'},
+      {nome:'SCIA (Setor Comercial)', risco:'medio', nota:'Trabalhadores em situação vulnerável'},
+    ]
+  },
+  'Paranoá': {
+    total: 8,
+    bairros: [
+      {nome:'Itapoã / Paranoá Norte', risco:'alto', nota:'Crescimento informal, IVS alto'},
+      {nome:'Paranoá Parque', risco:'medio', nota:'Área nova, infraestrutura incompleta'},
+      {nome:'Vila Paranoá Tradicional', risco:'medio', nota:'Histórico de violência doméstica'},
+    ]
+  },
 };
 
 const REGION_MAP={
@@ -770,192 +712,49 @@ const REGION_MAP={
 };
 
 const POLICIES={
-  'feminicidio':{
-    yr:'Março / 2015',title:'Lei do Feminicídio (Lei 13.104/2015)',
-    body:'Tipificou o feminicídio como homicídio qualificado e crime hediondo, prevendo pena de 12 a 30 anos de reclusão. No DF, o ano de vigência (2015) registrou 9 casos — o menor da série histórica, mas a linha de tendência cresceu nos quatro anos seguintes, refletindo possivelmente um aumento no registro formal de casos anteriormente classificados como homicídio simples.',
-    markerYr:2015,
-    stats:[
-      {n:'9',l:'Casos em 2015 (1º ano da lei)'},
-      {n:'+144%',l:'Crescimento até 2019 (pico)'},
-      {n:'22',l:'RAs com registro no período 2015–2019'}
-    ]
-  },
-  'casa-mulher':{
-    yr:'2015',title:'Casa da Mulher Brasileira — DF',
-    body:'Inaugurada na Estrutural (SCIA), a Casa da Mulher Brasileira integrou serviços de atendimento, abrigo e delegacia especializada em um único local. A SCIA/Estrutural registrou casos nos anos seguintes à inauguração, com alguma estabilidade após 2021, possivelmente indicando maior capacidade de acolhimento e encaminhamento preventivo.',
-    markerYr:2015,
-    stats:[
-      {n:'7',l:'Casos na SCIA/Estrutural (2015–2024)'},
-      {n:'2',l:'Casos em 2024 (2 em 2023)'},
-      {n:'2015',l:'Ano de inauguração da unidade DF'}
-    ]
-  },
-  'medida-protetiva':{
-    yr:'Abril / 2018',title:'Lei 13.641 — Descumprimento é Crime',
-    body:'A lei criminalizou o descumprimento de medidas protetivas de urgência, criando novo instrumento de coerção. Apesar disso, 2018 registrou 27 casos no DF — o terceiro maior da série — e 2019 atingiu o pico histórico de 33 casos. O dado indica que a criminalização isolada não foi suficiente sem implementação operacional robusta.',
-    markerYr:2018,
-    stats:[
-      {n:'27',l:'Casos em 2018 (ano da lei)'},
-      {n:'33',l:'Casos em 2019 (pico histórico)'},
-      {n:'+22%',l:'Alta de 2018 para 2019'}
-    ]
-  },
-  'patrulha':{
-    yr:'2019–2022',title:'Patrulha Maria da Penha — Expansão no DF',
-    body:'A Patrulha Maria da Penha, operada pela PMDF, passou por expansão gradual para todas as Regiões Administrativas do DF entre 2019 e 2022. Após o pico de 2019, observa-se queda em 2020 (18 casos) e 2022 (20 casos), com intercalações de alta. O período 2020–2022 acumula 64 casos, contra 78 do triênio anterior (2017–2019).',
-    markerYr:2021,
-    stats:[
-      {n:'64',l:'Casos em 2020–2022'},
-      {n:'78',l:'Casos em 2017–2019 (triênio anterior)'},
-      {n:'−18%',l:'Redução entre triênios'}
-    ]
-  },
-  'sinal-vermelho':{
-    yr:'Julho / 2021',title:'Programa Sinal Vermelho (Lei 14.188/2021)',
-    body:'O programa permite denúncia silenciosa de violência doméstica por meio do sinal de "X" na palma da mão em farmácias e estabelecimentos parceiros. Lançado em 2021, o DF registrou 26 casos nesse ano — o segundo maior da série —, sugerindo que a visibilidade gerada pelo programa pode ter contribuído para maior registro, sem redução imediata da violência letal.',
-    markerYr:2021,
-    stats:[
-      {n:'26',l:'Casos em 2021 (2º maior da série)'},
-      {n:'20',l:'Casos em 2022 (queda pós-lei)'},
-      {n:'−23%',l:'Redução 2021→2022'}
-    ]
-  },
-  'medidas-2023':{
-    yr:'Janeiro / 2023',title:'Lei 14.550 — Aprimoramento de Medidas Protetivas',
-    body:'Ampliou a concessão automática de medidas protetivas, independentemente de registro policial, e fortaleceu o monitoramento eletrônico de agressores. 2023 registrou 31 casos no DF — segundo maior da série —, dado que pode indicar subnotificação anterior com maior captação após a lei, ou ineficácia inicial da implementação.',
-    markerYr:2023,
-    stats:[
-      {n:'31',l:'Casos em 2023 (2º maior da série)'},
-      {n:'23',l:'Casos em 2024 (1º ano cheio pós-lei)'},
-      {n:'−25,8%',l:'Queda 2023→2024'}
-    ]
-  }
+  'feminicidio':{yr:'Março / 2015',title:'Lei do Feminicídio (Lei 13.104/2015)',body:'Tipificou o feminicídio como homicídio qualificado e crime hediondo, prevendo pena de 12 a 30 anos de reclusão. No DF, o ano de vigência (2015) registrou 9 casos — o menor da série histórica, mas a linha de tendência cresceu nos quatro anos seguintes.',markerYr:2015,stats:[{n:'9',l:'Casos em 2015 (1º ano da lei)'},{n:'+144%',l:'Crescimento até 2019 (pico)'},{n:'22',l:'RAs com registro em 2015–2019'}]},
+  'casa-mulher':{yr:'2015',title:'Casa da Mulher Brasileira — DF',body:'Inaugurada na Estrutural (SCIA), integrou serviços de atendimento, abrigo e delegacia especializada em um único local.',markerYr:2015,stats:[{n:'7',l:'Casos na SCIA/Estrutural (2015–2024)'},{n:'2',l:'Casos em 2024'},{n:'2015',l:'Ano de inauguração'}]},
+  'medida-protetiva':{yr:'Abril / 2018',title:'Lei 13.641 — Descumprimento é Crime',body:'A lei criminalizou o descumprimento de medidas protetivas de urgência. Apesar disso, 2018 registrou 27 casos no DF e 2019 atingiu o pico histórico de 33 casos.',markerYr:2018,stats:[{n:'27',l:'Casos em 2018 (ano da lei)'},{n:'33',l:'Casos em 2019 (pico histórico)'},{n:'+22%',l:'Alta de 2018 para 2019'}]},
+  'patrulha':{yr:'2019–2022',title:'Patrulha Maria da Penha — Expansão no DF',body:'A Patrulha Maria da Penha, operada pela PMDF, passou por expansão gradual para todas as RAs do DF entre 2019 e 2022.',markerYr:2021,stats:[{n:'64',l:'Casos em 2020–2022'},{n:'78',l:'Casos em 2017–2019'},{n:'−18%',l:'Redução entre triênios'}]},
+  'sinal-vermelho':{yr:'Julho / 2021',title:'Programa Sinal Vermelho (Lei 14.188/2021)',body:'Permite denúncia silenciosa de violência doméstica por meio do sinal de "X" na palma da mão em farmácias e estabelecimentos parceiros.',markerYr:2021,stats:[{n:'26',l:'Casos em 2021 (2º maior da série)'},{n:'20',l:'Casos em 2022 (queda pós-lei)'},{n:'−23%',l:'Redução 2021→2022'}]},
+  'medidas-2023':{yr:'Janeiro / 2023',title:'Lei 14.550 — Aprimoramento de Medidas Protetivas',body:'Ampliou a concessão automática de medidas protetivas, independentemente de registro policial, e fortaleceu o monitoramento eletrônico de agressores.',markerYr:2023,stats:[{n:'31',l:'Casos em 2023 (2º maior da série)'},{n:'23',l:'Casos em 2024 (1º ano cheio)'},{n:'−25,8%',l:'Queda 2023→2024'}]}
 };
 
-/* ── STATE ── */
+/* ─── STATE ─── */
 let activeYears=[...YEARS];
 let selectedYear=null;
 let selectedRA=null;
 let activePolicy=null;
 
-function totalRA(ra,yrs){return(CASES[ra]?yrs.reduce((s,y)=>s+(CASES[ra][y]||0),0):0)}
+function totalRA(ra,yrs){return CASES[ra]?yrs.reduce((s,y)=>s+(CASES[ra][y]||0),0):0}
 function dfTotal(yrs){return yrs.reduce((s,y)=>s+(DF_TOT[y]||0),0)}
 function hcClass(v){if(!v||v===0)return 'h0';if(v<=1)return 'h1';if(v<=2)return 'h2';if(v<=4)return 'h3';return 'h4'}
 
-/* ── SIDEBAR RA totals update ── */
+/* ─── SIDEBAR ─── */
 function updateSidebarTotals(){
   document.querySelectorAll('.ra-btn').forEach(btn=>{
     const ra=btn.dataset.ra;
     const tot=totalRA(ra,activeYears);
     btn.querySelector('.ra-tot').textContent=tot>0?tot:0;
   });
-  // region group totals
   for(const[key,ras] of Object.entries(REGION_MAP)){
     const el=document.getElementById('gc-'+key);
     if(el) el.textContent=ras.reduce((s,ra)=>s+totalRA(ra,activeYears),0);
   }
 }
 
-/* ── YEAR FILTER ── */
-document.querySelectorAll('.yr-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('.yr-btn').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');
-    const v=b.dataset.y;
-    activeYears=v==='all'?[...YEARS]:v.split(',').map(Number);
-    selectedYear=null;selectedRA=null;
-    hideCallout();hidePolicy();
-    render();
-  });
-});
-
-/* ── RA FILTER ── */
-document.querySelectorAll('.ra-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    const ra=b.dataset.ra;
-    if(selectedRA===ra){selectedRA=null;b.classList.remove('on')}
-    else{
-      document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));
-      b.classList.add('on');
-      selectedRA=ra;
-    }
-    renderRanking();renderHeat();renderKPIs();
-  });
-});
-document.getElementById('clear-ra').addEventListener('click',()=>{
-  selectedRA=null;
-  document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));
-  renderRanking();renderHeat();renderKPIs();
-});
-
-/* ── POLICY SIDEBAR ── */
-document.querySelectorAll('.policy-item').forEach(p=>{
-  p.addEventListener('click',()=>{
-    const key=p.dataset.pol;
-    if(activePolicy===key){
-      activePolicy=null;
-      document.querySelectorAll('.policy-item').forEach(x=>x.classList.remove('on'));
-      hidePolicy();
-      renderChart();
-    } else {
-      activePolicy=key;
-      document.querySelectorAll('.policy-item').forEach(x=>x.classList.remove('on'));
-      p.classList.add('on');
-      showPolicy(key);
-      renderChart();
-    }
-  });
-});
-document.getElementById('pi-close').addEventListener('click',()=>{
-  activePolicy=null;
-  document.querySelectorAll('.policy-item').forEach(x=>x.classList.remove('on'));
-  hidePolicy();
-  renderChart();
-});
-
-function showPolicy(key){
-  const pol=POLICIES[key];if(!pol)return;
-  document.getElementById('pi-yr').textContent=pol.yr;
-  document.getElementById('pi-title').textContent=pol.title;
-  document.getElementById('pi-body').textContent=pol.body;
-  const statsEl=document.getElementById('pi-stats');
-  statsEl.innerHTML=pol.stats.map(s=>`<div class="pi-stat"><div class="ps-num">${s.n}</div><div class="ps-lbl">${s.l}</div></div>`).join('');
-  document.getElementById('policy-impact').classList.add('show');
-  hideCallout();
-}
-function hidePolicy(){document.getElementById('policy-impact').classList.remove('show')}
-function hideCallout(){document.getElementById('yr-callout').classList.remove('show')}
-
-/* ── RENDER KPIs ── */
+/* ─── KPIs ─── */
 function renderKPIs(){
   const yrs=activeYears;
-  const rasToCount=selectedRA?[selectedRA]:Object.keys(CASES);
-
-  // total: if RA selected, count from CASES; else DF_TOT
-  let total,peakYr,peakVal,lastYr,lastVal,prevVal;
-  if(selectedRA){
-    total=totalRA(selectedRA,yrs);
-    const vals=yrs.map(y=>CASES[selectedRA]&&CASES[selectedRA][y]?CASES[selectedRA][y]:0);
-    peakVal=Math.max(...vals);
-    peakYr=yrs[vals.indexOf(peakVal)];
-    lastYr=yrs[yrs.length-1];
-    lastVal=CASES[selectedRA]&&CASES[selectedRA][lastYr]?CASES[selectedRA][lastYr]:0;
-    const prevYr=yrs.length>1?yrs[yrs.length-2]:null;
-    prevVal=prevYr&&CASES[selectedRA]?CASES[selectedRA][prevYr]||0:null;
-  } else {
-    total=dfTotal(yrs);
-    const vals=yrs.map(y=>DF_TOT[y]);
-    peakVal=Math.max(...vals);
-    peakYr=yrs[vals.indexOf(peakVal)];
-    lastYr=yrs[yrs.length-1];
-    lastVal=DF_TOT[lastYr];
-    const prevYr=yrs.length>1?yrs[yrs.length-2]:null;
-    prevVal=prevYr?DF_TOT[prevYr]:null;
-  }
-  document.getElementById('kpi-total').textContent=total;
-  document.getElementById('h-total').textContent=total;
+  const tot=dfTotal(yrs);
+  document.getElementById('kpi-total').textContent=tot;
+  document.getElementById('h-total').textContent=tot;
+  const peakYr=yrs.reduce((best,y)=>DF_TOT[y]>DF_TOT[best]?y:best,yrs[0]);
+  const peakVal=DF_TOT[peakYr];
   document.getElementById('kpi-peak').textContent=peakVal;
   document.getElementById('kpi-peak-s').textContent=`registros em ${peakYr}`;
+  const lastVal=DF_TOT[yrs[yrs.length-1]];
+  const prevVal=yrs.length>1?DF_TOT[yrs[yrs.length-2]]:null;
   document.getElementById('kpi-last').textContent=lastVal;
   if(prevVal!==null&&prevVal>0){
     const pct=((lastVal-prevVal)/prevVal*100).toFixed(1);
@@ -968,33 +767,21 @@ function renderKPIs(){
     document.getElementById('kpi-ra-s').textContent=`${ranked[0].tot} casos acumulados`;
   }
   document.getElementById('period-label').textContent=selectedRA?`${activeYears[0]}–${activeYears[activeYears.length-1]} · ${selectedRA}`:`${activeYears[0]}–${activeYears[activeYears.length-1]} · Todos os casos`;
-
-  // count unique RAs with cases
   const rCount=Object.keys(CASES).filter(ra=>totalRA(ra,yrs)>0).length;
   document.getElementById('h-ras').textContent=rCount;
 }
 
-/* ── RENDER CHART ── */
+/* ─── CHART ─── */
 function renderChart(){
   const canvas=document.getElementById('chart-canvas');
-  // determine values to show: if RA selected, show that RA's yearly data
   let vals;
-  if(selectedRA&&CASES[selectedRA]){
-    vals=YEARS.map(y=>CASES[selectedRA][y]||0);
-  } else {
-    vals=YEARS.map(y=>DF_TOT[y]);
-  }
+  if(selectedRA&&CASES[selectedRA]){vals=YEARS.map(y=>CASES[selectedRA][y]||0);}
+  else{vals=YEARS.map(y=>DF_TOT[y]);}
   const maxV=Math.max(...vals,1);
-  const availH=160; // pixels available
-
-  // policy marker: find which year to mark
+  const availH=160;
   let markerYr=null;
-  if(activePolicy&&POLICIES[activePolicy]){
-    markerYr=POLICIES[activePolicy].markerYr;
-  }
-
+  if(activePolicy&&POLICIES[activePolicy]) markerYr=POLICIES[activePolicy].markerYr;
   canvas.innerHTML='';
-
   YEARS.forEach((y,i)=>{
     const v=vals[i];
     const h=Math.max(Math.round((v/maxV)*availH),4);
@@ -1002,86 +789,66 @@ function renderChart(){
     const isPeak=v===maxV&&v>0;
     const isSel=selectedYear===y;
     const isMarker=markerYr===y;
-
-    // bar color
-    let bg='#D4A99A'; // muted default
+    let bg='#D4A99A';
     if(isSel) bg='#B91C1C';
     else if(isPeak) bg='#92400E';
     else if(isActive) bg='#C4554A';
-
     const col=document.createElement('div');
     col.className='bar-col'+(isSel?' selected':'');
     col.style.opacity=isActive?1:0.25;
     col.dataset.yr=y;
-
     const body=document.createElement('div');
     body.className='bar-body'+(isSel?' lit':'');
     body.style.height=h+'px';
     body.style.background=bg;
     if(isPeak) body.style.boxShadow='0 -2px 10px rgba(146,64,14,.4)';
     if(isMarker) body.style.outline='2px solid #B91C1C';
-
     const topVal=document.createElement('span');
     topVal.className='bar-top-val';
     topVal.textContent=v;
     body.appendChild(topVal);
-
     const yr=document.createElement('span');
     yr.className='bar-yr';
     yr.textContent=y;
-
     col.appendChild(body);
     col.appendChild(yr);
-
-    // policy triangle marker
     if(isMarker){
       const mk=document.createElement('div');
-      mk.style.cssText=`position:absolute;top:-8px;left:50%;transform:translateX(-50%);
-        width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
-        border-top:7px solid #B91C1C;z-index:2`;
+      mk.style.cssText=`position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #B91C1C;z-index:2`;
       col.style.position='relative';
       col.appendChild(mk);
     }
-
     col.addEventListener('click',()=>{
-      if(selectedYear===y){selectedYear=null;hideCallout()}
+      if(selectedYear===y){selectedYear=null;hideCallout();}
       else{selectedYear=y;showCallout(y,vals[i]);}
       activePolicy=null;
       document.querySelectorAll('.policy-item').forEach(x=>x.classList.remove('on'));
       hidePolicy();
       renderChart();renderRanking();renderHeat();
     });
-
     canvas.appendChild(col);
   });
 }
 
 function showCallout(yr,dfv){
   const ra=selectedRA;
-  const ranked=Object.keys(CASES)
-    .map(r=>({r,v:CASES[r][yr]||0}))
-    .filter(x=>x.v>0)
-    .sort((a,b)=>b.v-a.v);
+  const ranked=Object.keys(CASES).map(r=>({r,v:CASES[r][yr]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
   const top3=ranked.slice(0,3).map(x=>`<strong>${x.r}</strong> (${x.v})`).join(', ');
   const total=ra?dfv:DF_TOT[yr];
   const box=document.getElementById('yr-callout');
-  box.innerHTML=`
-    <h3>${yr} — ${total} caso${total!==1?'s':''} ${ra?'em '+ra:'no DF'}</h3>
+  box.innerHTML=`<h3>${yr} — ${total} caso${total!==1?'s':''} ${ra?'em '+ra:'no DF'}</h3>
     <div class="callout-stat"><div class="cs-n">${total}</div><div class="cs-l">Registros no ano</div></div>
     <div class="callout-stat"><div class="cs-n" style="font-size:12px;line-height:2">${top3||'—'}</div><div class="cs-l">RAs com mais casos</div></div>`;
   box.classList.add('show');
   hidePolicy();
 }
+function hideCallout(){document.getElementById('yr-callout').classList.remove('show');}
 
-/* ── RENDER RANKING ── */
+/* ─── RANKING ─── */
 function renderRanking(){
   const yrs=selectedYear?[selectedYear]:activeYears;
   document.getElementById('ranking-period-lbl').textContent=selectedYear?`(${selectedYear})`:'';
-  const ranked=Object.keys(CASES)
-    .map(ra=>({ra,tot:totalRA(ra,yrs)}))
-    .filter(x=>x.tot>0)
-    .sort((a,b)=>b.tot-a.tot)
-    .slice(0,10);
+  const ranked=Object.keys(CASES).map(ra=>({ra,tot:totalRA(ra,yrs)})).filter(x=>x.tot>0).sort((a,b)=>b.tot-a.tot).slice(0,10);
   const maxV=ranked[0]?.tot||1;
   document.getElementById('ranking-panel').innerHTML=ranked.map(({ra,tot},i)=>{
     const pct=Math.round((tot/maxV)*100);
@@ -1095,20 +862,14 @@ function renderRanking(){
   document.querySelectorAll('.rank-row').forEach(r=>{
     r.addEventListener('click',()=>{
       const ra=r.dataset.ra;
-      if(selectedRA===ra){
-        selectedRA=null;
-        document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));
-      } else {
-        selectedRA=ra;
-        document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));
-        document.querySelectorAll(`.ra-btn[data-ra="${ra}"]`).forEach(x=>x.classList.add('on'));
-      }
+      if(selectedRA===ra){selectedRA=null;document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));}
+      else{selectedRA=ra;document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));document.querySelectorAll(`.ra-btn[data-ra="${ra}"]`).forEach(x=>x.classList.add('on'));}
       renderRanking();renderHeat();renderKPIs();renderChart();
     });
   });
 }
 
-/* ── RENDER RATES ── */
+/* ─── RATES ─── */
 function renderRates(){
   const yrs=activeYears;
   const data=Object.keys(CASES).filter(ra=>POP[ra])
@@ -1116,33 +877,22 @@ function renderRates(){
     .filter(x=>x.tot>0).sort((a,b)=>b.rate-a.rate).slice(0,8);
   const maxR=data[0]?.rate||1;
   document.getElementById('rate-panel').innerHTML=data.map(({ra,rate})=>
-    `<div class="rate-row">
-      <span class="rate-name">${ra}</span>
-      <div class="rate-track"><div class="rate-fill" style="width:${Math.round((rate/maxR)*100)}%"></div></div>
-      <span class="rate-val">${rate.toFixed(1)}</span></div>`
+    `<div class="rate-row"><span class="rate-name">${ra}</span><div class="rate-track"><div class="rate-fill" style="width:${Math.round((rate/maxR)*100)}%"></div></div><span class="rate-val">${rate.toFixed(1)}</span></div>`
   ).join('');
 }
 
-/* ── RENDER HEAT ── */
+/* ─── HEAT ─── */
 let heatSelCol=null;
 function renderHeat(){
   const yrs=activeYears;
-  const ras=Object.keys(CASES)
-    .map(ra=>({ra,tot:totalRA(ra,yrs)}))
-    .filter(x=>x.tot>0)
-    .sort((a,b)=>b.tot-a.tot)
-    .slice(0,12).map(x=>x.ra);
-
-  const displayYrs=yrs;
+  const ras=Object.keys(CASES).map(ra=>({ra,tot:totalRA(ra,yrs)})).filter(x=>x.tot>0).sort((a,b)=>b.tot-a.tot).slice(0,12).map(x=>x.ra);
   let h='<thead><tr><th>Região Administrativa</th>';
-  displayYrs.forEach(y=>{
-    h+=`<th class="${heatSelCol===y?'ycol':''}" data-yr="${y}">${y}</th>`;
-  });
+  yrs.forEach(y=>{h+=`<th class="${heatSelCol===y?'ycol':''}" data-yr="${y}">${y}</th>`;});
   h+='</tr></thead><tbody>';
   ras.forEach(ra=>{
     const isSel=selectedRA===ra;
     h+=`<tr class="${isSel?'hl':''}" data-ra="${ra}"><td>${ra}</td>`;
-    displayYrs.forEach(y=>{
+    yrs.forEach(y=>{
       const v=CASES[ra]?CASES[ra][y]:null;
       h+=`<td class="${heatSelCol===y?'ycol':''}"><span class="hc ${hcClass(v)}">${v===null?'—':v}</span></td>`;
     });
@@ -1151,45 +901,289 @@ function renderHeat(){
   h+='</tbody>';
   const table=document.getElementById('heat-table');
   table.innerHTML=h;
-
-  // row click
   table.querySelectorAll('tbody tr').forEach(tr=>{
     tr.addEventListener('click',()=>{
       const ra=tr.dataset.ra;
-      if(selectedRA===ra){
-        selectedRA=null;
-        document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));
-      } else {
-        selectedRA=ra;
-        document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));
-        document.querySelectorAll(`.ra-btn[data-ra="${ra}"]`).forEach(x=>x.classList.add('on'));
-      }
+      if(selectedRA===ra){selectedRA=null;document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));}
+      else{selectedRA=ra;document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));document.querySelectorAll(`.ra-btn[data-ra="${ra}"]`).forEach(x=>x.classList.add('on'));}
       renderRanking();renderHeat();renderKPIs();renderChart();
     });
   });
-
-  // col click
   table.querySelectorAll('thead th[data-yr]').forEach(th=>{
     th.addEventListener('click',()=>{
       const yr=+th.dataset.yr;
       heatSelCol=heatSelCol===yr?null:yr;
-      if(heatSelCol){selectedYear=yr;showCallout(yr,DF_TOT[yr])}
-      else{selectedYear=null;hideCallout()}
+      if(heatSelCol){selectedYear=yr;showCallout(yr,DF_TOT[yr]);}
+      else{selectedYear=null;hideCallout();}
       renderChart();renderRanking();renderHeat();
     });
   });
 }
 
-/* ── RENDER ALL ── */
-function render(){
-  renderKPIs();
-  renderChart();
-  renderRanking();
-  renderRates();
-  renderHeat();
-  updateSidebarTotals();
+function hidePolicy(){document.getElementById('policy-impact').classList.remove('show');}
+
+/* ─── POLICY ─── */
+document.querySelectorAll('.policy-item').forEach(item=>{
+  item.addEventListener('click',()=>{
+    const pol=item.dataset.pol;
+    if(activePolicy===pol){activePolicy=null;item.classList.remove('on');hidePolicy();}
+    else{
+      activePolicy=pol;
+      document.querySelectorAll('.policy-item').forEach(x=>x.classList.remove('on'));
+      item.classList.add('on');
+      const p=POLICIES[pol];
+      document.getElementById('pi-yr').textContent=p.yr;
+      document.getElementById('pi-title').textContent=p.title;
+      document.getElementById('pi-body').textContent=p.body;
+      document.getElementById('pi-stats').innerHTML=p.stats.map(s=>`<div class="pi-stat"><div class="ps-num">${s.n}</div><div class="ps-lbl">${s.l}</div></div>`).join('');
+      document.getElementById('policy-impact').classList.add('show');
+      hideCallout();
+    }
+    renderChart();
+  });
+});
+document.getElementById('pi-close').addEventListener('click',()=>{activePolicy=null;document.querySelectorAll('.policy-item').forEach(x=>x.classList.remove('on'));hidePolicy();renderChart();});
+
+/* ─── YEAR FILTER ─── */
+document.querySelectorAll('.yr-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.yr-btn').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    const v=b.dataset.y;
+    activeYears=v==='all'?[...YEARS]:v.split(',').map(Number);
+    selectedYear=null;selectedRA=null;
+    hideCallout();hidePolicy();
+    render();
+  });
+});
+
+/* ─── RA FILTER ─── */
+document.querySelectorAll('.ra-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const ra=btn.dataset.ra;
+    if(selectedRA===ra){selectedRA=null;btn.classList.remove('on');}
+    else{selectedRA=ra;document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));btn.classList.add('on');}
+    selectedYear=null;hideCallout();
+    renderKPIs();renderChart();renderRanking();renderHeat();
+  });
+});
+document.getElementById('clear-ra').addEventListener('click',()=>{
+  selectedRA=null;document.querySelectorAll('.ra-btn').forEach(x=>x.classList.remove('on'));
+  selectedYear=null;hideCallout();
+  render();
+});
+
+/* ─── RENDER ALL ─── */
+function render(){renderKPIs();renderChart();renderRanking();renderRates();renderHeat();updateSidebarTotals();}
+
+/* ─── MAP ─── */
+let dfMap=null;
+let mapLayers={};
+let mapInitialized=false;
+
+function getMapColor(total){
+  if(!total||total===0) return '#e5e7eb';
+  if(total<=5) return '#fde8e8';
+  if(total<=10) return '#f9a8a8';
+  if(total<=20) return '#ef4444';
+  return '#b91c1c';
 }
 
+function initMap(){
+  if(mapInitialized) return;
+  mapInitialized=true;
+  dfMap=L.map('df-map',{center:[-15.78,-47.93],zoom:10,zoomControl:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap contributors',
+    maxZoom:17
+  }).addTo(dfMap);
+
+  // Add RA polygons
+  Object.keys(RA_POLYGONS).forEach(ra=>{
+    const coords=RA_POLYGONS[ra];
+    const total=YEARS.reduce((s,y)=>s+(CASES[ra]?CASES[ra][y]||0:0),0);
+    const rate=POP[ra]?+((total/(POP[ra]*.5))*100000).toFixed(1):0;
+    const poly=L.polygon(coords,{
+      color:'rgba(26,20,16,0.4)',
+      weight:1.5,
+      fillColor:getMapColor(total),
+      fillOpacity:0.6,
+    }).addTo(dfMap);
+    poly.bindTooltip(`<strong>${ra}</strong>${total} casos · Taxa: ${rate}/100k mulheres`,{className:'leaflet-tooltip-custom',direction:'top'});
+    poly.on('click',()=>showMapDetail(ra,total,rate));
+    mapLayers[ra]=poly;
+  });
+
+  // Add markers for RAs without polygons
+  Object.keys(RA_COORDS).forEach(ra=>{
+    if(RA_POLYGONS[ra]) return; // skip if polygon exists
+    const total=YEARS.reduce((s,y)=>s+(CASES[ra]?CASES[ra][y]||0:0),0);
+    const rate=POP[ra]?+((total/(POP[ra]*.5))*100000).toFixed(1):0;
+    if(total===0) return;
+    const coords=RA_COORDS[ra];
+    const circle=L.circleMarker(coords,{
+      radius:Math.max(6,Math.sqrt(total)*4),
+      color:'#B91C1C',weight:2,fillColor:getMapColor(total),fillOpacity:0.7
+    }).addTo(dfMap);
+    circle.bindTooltip(`<strong>${ra}</strong>${total} casos · Taxa: ${rate}/100k`,{className:'leaflet-tooltip-custom',direction:'top'});
+    circle.on('click',()=>showMapDetail(ra,total,rate));
+    mapLayers[ra]=circle;
+  });
+
+  renderMapTop5();
+}
+
+function showMapDetail(ra,total,rate){
+  const yData=YEARS.map(y=>({y,v:CASES[ra]?CASES[ra][y]||0:0}));
+  const peak=yData.reduce((b,x)=>x.v>b.v?x:b,{v:0,y:'-'});
+  const recent5=yData.slice(-5).reduce((s,x)=>s+x.v,0);
+  const card=document.getElementById('map-detail-card');
+  card.innerHTML=`<h4>${ra}</h4>
+    <div class="ic-big">${total}</div>
+    <div class="ic-sub">casos confirmados (2015–2024)</div>
+    <ul class="ra-detail-list" style="margin-top:12px">
+      <li><span>Taxa por 100k mulheres</span><span class="dl-val">${rate}</span></li>
+      <li><span>Pico histórico</span><span class="dl-val">${peak.v} (${peak.y})</span></li>
+      <li><span>Últimos 5 anos (2020–2024)</span><span class="dl-val">${recent5}</span></li>
+      <li><span>Média anual</span><span class="dl-val">${(total/10).toFixed(1)}</span></li>
+    </ul>`;
+}
+
+function renderMapTop5(){
+  const ranked=Object.keys(CASES).map(ra=>{
+    const tot=YEARS.reduce((s,y)=>s+(CASES[ra][y]||0),0);
+    const rate=POP[ra]?+((tot/(POP[ra]*.5))*100000).toFixed(1):0;
+    return{ra,tot,rate};
+  }).filter(x=>x.tot>0).sort((a,b)=>b.tot-a.tot);
+
+  document.getElementById('map-top5').innerHTML=ranked.slice(0,7).map(({ra,tot})=>
+    `<li><span>${ra}</span><span class="dl-val">${tot}</span></li>`
+  ).join('');
+
+  const byRate=[...ranked].sort((a,b)=>b.rate-a.rate);
+  document.getElementById('map-top5-rate').innerHTML=byRate.slice(0,7).map(({ra,rate})=>
+    `<li><span>${ra}</span><span class="dl-val">${rate}</span></li>`
+  ).join('');
+}
+
+/* ─── BAIRROS ─── */
+function renderBairros(){
+  const topRAs=Object.keys(BAIRROS_RISCO).sort((a,b)=>BAIRROS_RISCO[b].total-BAIRROS_RISCO[a].total);
+  const riskLabel={alto:'Alto',medio:'Médio',baixo:'Baixo'};
+  const riskClass={alto:'risk-alto',medio:'risk-medio',baixo:'risk-baixo'};
+  document.getElementById('bairros-grid').innerHTML=topRAs.map(ra=>{
+    const d=BAIRROS_RISCO[ra];
+    return `<div class="bairro-card">
+      <div class="bairro-card-head">
+        <div class="bc-ra">${ra}</div>
+        <div class="bc-tot">${d.total}</div>
+        <div class="bc-lbl">casos 2015–2024</div>
+      </div>
+      <div class="bairro-list">${d.bairros.map(b=>`
+        <div class="bairro-item">
+          <div><div class="bairro-name">${b.nome}</div><div class="bairro-note">${b.nota}</div></div>
+          <span class="bairro-risk ${riskClass[b.risco]}">${riskLabel[b.risco]}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ─── PROJEÇÕES ─── */
+function linearRegression(yVals){
+  const n=yVals.length;
+  const xVals=yVals.map((_,i)=>i);
+  const xMean=xVals.reduce((a,b)=>a+b,0)/n;
+  const yMean=yVals.reduce((a,b)=>a+b,0)/n;
+  const slope=xVals.reduce((s,x,i)=>s+(x-xMean)*(yVals[i]-yMean),0)/xVals.reduce((s,x)=>s+(x-xMean)**2,0);
+  const intercept=yMean-slope*xMean;
+  return{slope,intercept,predict:(x)=>Math.max(0,Math.round(intercept+slope*x))};
+}
+
+function renderPrevisao(){
+  const allVals=YEARS.map(y=>DF_TOT[y]);
+  const reg=linearRegression(allVals);
+  const n=YEARS.length;
+  const proj=[2025,2026,2027].map((yr,i)=>({yr,val:reg.predict(n+i)}));
+
+  const colors={2025:'warn',2026:'warn',2027:'danger'};
+  document.getElementById('pred-anos').innerHTML=proj.map(({yr,val})=>
+    `<div class="pred-cell">
+      <div class="pc-label">Projeção ${yr}</div>
+      <div class="pc-val ${colors[yr]}">${val}</div>
+      <div class="pc-note">casos estimados · intervalo ±4</div>
+    </div>`
+  ).join('');
+
+  // Tendências por RA (2020–2024)
+  const recentYrs=[2020,2021,2022,2023,2024];
+  const raTrends=Object.keys(CASES).map(ra=>{
+    const vals=recentYrs.map(y=>CASES[ra][y]||0);
+    const r=linearRegression(vals);
+    return{ra,slope:r.slope,tot:vals.reduce((a,b)=>a+b,0)};
+  }).filter(x=>x.tot>0);
+
+  const alta=raTrends.filter(x=>x.slope>0).sort((a,b)=>b.slope-a.slope).slice(0,6);
+  const queda=raTrends.filter(x=>x.slope<=0).sort((a,b)=>a.slope-b.slope).slice(0,6);
+
+  document.getElementById('pred-alta-panel').innerHTML=alta.map(({ra,slope})=>
+    `<div class="rank-row"><span class="rank-name">${ra}</span><span class="rank-val" style="color:var(--crimson);width:auto">+${slope.toFixed(2)}/ano</span></div>`
+  ).join('');
+
+  document.getElementById('pred-queda-panel').innerHTML=queda.map(({ra,slope})=>
+    `<div class="rank-row"><span class="rank-name">${ra}</span><span class="rank-val" style="color:var(--teal);width:auto">${slope.toFixed(2)}/ano</span></div>`
+  ).join('');
+
+  // Indicadores preventivos
+  const totalRecente=recentYrs.reduce((s,y)=>s+DF_TOT[y],0);
+  const totalAnterior=[2015,2016,2017,2018,2019].reduce((s,y)=>s+DF_TOT[y],0);
+  const varPct=((totalRecente-totalAnterior)/totalAnterior*100).toFixed(1);
+  document.getElementById('pred-indicadores').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:4px 0">
+      <div>
+        <div style="font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Variação 2015–19 vs 2020–24</div>
+        <div style="font-family:var(--ff-mono);font-size:22px;font-weight:600;color:${varPct>0?'var(--crimson)':'var(--teal)'}">${varPct>0?'+':''}${varPct}%</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${totalAnterior} → ${totalRecente} casos</div>
+      </div>
+      <div>
+        <div style="font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">RAs em alerta (tendência alta)</div>
+        <div style="font-family:var(--ff-mono);font-size:22px;font-weight:600;color:var(--gold)">${alta.length}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">regiões requerem atenção prioritária</div>
+      </div>
+      <div>
+        <div style="font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Meta de redução 2025</div>
+        <div style="font-family:var(--ff-mono);font-size:22px;font-weight:600;color:var(--teal)">≤18</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">casos — redução de 22% vs 2024 (23)</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--rule);">
+      <div style="font-family:var(--ff-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Recomendações de alocação de recursos</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${alta.slice(0,3).map(({ra,slope})=>`
+          <div style="display:flex;align-items:center;gap:10px;font-size:11px;">
+            <span style="font-family:var(--ff-mono);font-size:9px;background:rgba(185,28,28,.1);color:#9F1515;padding:2px 6px;border-radius:2px;white-space:nowrap">PRIORIDADE</span>
+            <span style="color:var(--ink)"><strong>${ra}</strong> — reforçar Patrulha Maria da Penha e CRAS. Tendência: +${slope.toFixed(2)} caso/ano.</span>
+          </div>`).join('')}
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Demais RAs em alta: monitoramento mensal de ocorrências de violência doméstica como preditor.</div>
+      </div>
+    </div>`;
+}
+
+/* ─── TABS ─── */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const tab=btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('tab-'+tab).classList.add('on');
+    if(tab==='mapa'){setTimeout(()=>{initMap();if(dfMap)dfMap.invalidateSize();},100);}
+    if(tab==='bairros') renderBairros();
+    if(tab==='previsao') renderPrevisao();
+  });
+});
+
+/* ─── INIT ─── */
 render();
 </script>
 </body>
